@@ -1,30 +1,42 @@
+import os
+import requests
+import logging
+
+logger = logging.getLogger(__name__)
+
 class AIService:
     @staticmethod
     def generate_questions(payload):
-        # Mock Response matching the contract
-        # Payload structure: { "question_requests": [ { "lesson_id": "...", "questions": [ ... ] } ] }
+        """
+        Calls the AI microservice to generate questions.
         
-        # We can inspect payload if needed, but for now return static mock
-        # ensuring lesson_id context if possible, or just generic mock.
-        
-        # Extract lesson_id from payload for better mocking if present
-        lesson_id = "unknown"
-        if 'question_requests' in payload and payload['question_requests']:
-            lesson_id = payload['question_requests'][0].get('lesson_id', 'unknown')
-
-        return {
-            "content": [
+        Payload structure:
+        {
+          "question_requests": [
+            {
+              "lesson_id": "string",
+              "questions": [
                 {
-                    "lesson_id": lesson_id,
-                    "questions": [
-                        {
-                            "question_statement": "Mock Q1",
-                            "explanation": "Exp...",
-                            "correct_answer": "A",
-                            "plausible_distractors": ["B", "C"],
-                            "type": "mcq" # Adding type for clarity, though not in strict contract example it helps
-                        }
-                    ]
+                  "type": "mcq|tf|short_answer",
+                  "count": "integer"
                 }
-            ]
+              ]
+            }
+          ]
         }
+        """
+        # Get AI Service URL from environment variables, default to localhost for now
+        ai_service_url = os.environ.get('AI_SERVICE_URL', 'https://b3af-197-133-59-36.ngrok-free.app/')
+        endpoint = f"{ai_service_url}/generate_questions" # Guessing endpoint name based on context
+        url = endpoint
+        #i left the url for possible future changes (multiple ai services)
+        try:
+            logger.info(f"Sending request to AI Service at {url}")
+            response = requests.post(url, json=payload, headers={"ngrok-skip-browser-warning": "69420"}, timeout=60) # 60s timeout for AI generation
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"AI Service request failed: {e}")
+            # Retrying or specific error handling could be added here
+            raise e
+

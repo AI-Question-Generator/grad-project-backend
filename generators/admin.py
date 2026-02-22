@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import GenerationRequest, Question
+from .models import GenerationRequest, GeneratedQuestion
 
 admin.site.register(GenerationRequest)
-admin.site.register(Question)
+admin.site.register(GeneratedQuestion)
