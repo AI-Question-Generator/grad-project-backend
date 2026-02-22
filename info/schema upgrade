@@ -1,0 +1,16 @@
+# Architecture Refinement & Implementation Walkthrough
+
+We have successfully refined the codebase to align with the proposed Event-Driven Architecture and the new Model Schemas.
+
+## 1. Schema Upgrades & Migrations
+- **Refined Data Structure**: We removed `CourseFile` and legacy `Lesson` assumptions, integrating the provided schema mapping: `Project`, `SourceFile`, `Lesson`, `LessonSource`, `GenerationRequest`, and `GeneratedQuestion`.
+- **Microservice Shift**: The `lesson_chunks` table has been successfully extracted from our schema. The `GeneratedQuestion` model now stores a simple `chunk_hash` string, properly delegating piece management to the external microservice.
+- All deprecated migrations and local sqlite database traces were wiped, and fresh migrations were applied across the `curriculum` and `generators` namespaces.
+
+## 2. Scalable REST APIs & RBAC 
+- **Routes Assembled**: Added comprehensive RESTful standard CRUD operations via Django REST Framework ViewSets for `Projects`, `Lessons`, `SourceFiles`, and `LessonSources`.
+- **Role-Based Execution**: All endpoints strictly enforce user ownership boundaries. Utilizing `get_queryset()` overrides, users can only access models where the `project__owner` or `owner` directly traces back to their `request.user` session ID.
+
+## 3. Asynchronous Pipeline Integration (Option B)
+- **Celery + Redis Stack**: We added `celery` and `redis` configuration directly to the application environment and updated `docker-compose.yml` to spin up supporting architecture automatically.
+- **Background Execution**: Hitting `POST /api/generators/generation-requests/` now immediately triggers `process_generation_request.delay()`, freeing the main API process to respond with `202 Accepted` while inference coordinates external microservice calls behind the scenes.

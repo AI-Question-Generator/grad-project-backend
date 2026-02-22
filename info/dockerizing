@@ -1,0 +1,21 @@
+# Walkthrough: Dockerizing the Project
+
+In this task, we prepared the project for deployment by Dockerizing it and standardizing its environment configuration using `.env`.
+
+Here is a summary of the changes made:
+
+## Configuration Updates
+We replaced the hardcoded `settings.py` variables for `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, and `DATABASES` with environment variables. `dj_database_url` was installed to easily configure PostgreSQL databases through the `DATABASE_URL` environment variable, falling back to local SQLite automatically if not set.
+
+Dependencies needed for deployment natively or within Docker were added to `requirements.txt` (`gunicorn`, `python-dotenv`, `psycopg2-binary`, `dj-database-url`).
+
+## Docker Setup
+1. **Dockerfile**: Designed a lightweight Docker image built off `python:3.11-slim` that installs necessary PostgreSQL runtime dependencies and Python modules. It exposes the project directory off `/app` inside the image.
+2. **docker-compose.yml**: Configured a `web` container (using the Dockerfile) to start the Django application using the `gunicorn` application server, mapped onto port `8000`. Connected the `web` layer to a `db` container running PostgreSQL 15, persisting PostgreSQL data off a Docker volume `postgres_data`.
+3. **entrypoint.sh**: Setup an entrypoint script that the Django container executes on start. The script polls the `db` host waiting for the PostgreSQL connection to become available before applying all Django database migrations (`python manage.py migrate`), removing the risk of application crashes on fresh setups.
+
+## Deployment Instructions
+A comprehensive [DEPLOYMENT.md](file:///Users/AymanOHM/Documents/workspace/Python/grad-project-backend/DEPLOYMENT.md) guide was drafted, which provides setup instructions for Docker, creating admin operators, backing up data, and verifying the production stack against integration tests.
+
+## Note on Testing
+An automated test of `docker compose build` was attempted, but failed because the Docker daemon (`dockerd`) is currently not running on the local development setup. To test the deployment natively, please ensure Docker Desktop is started first.

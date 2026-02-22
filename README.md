@@ -1,101 +1,103 @@
 # Graduate Project Backend
 
-This repository contains the backend for the Graduate Project, built with Django and Django Rest Framework. It handles user authentication, curriculum management (file uploads and lesson creation), and AI-driven question generation.
+This repository contains the backend for the Graduate Project, built with Django and Django Rest Framework. It handles user authentication, curriculum management (file uploads and lesson creation), and AI-driven question generation using an event-driven architecture.
 
 ## Project Structure & Models
 
 The project is divided into three main applications:
 
 ### 1. Authentication (`authentication`)
-Handles user management and role-based access.
-
-**Models:**
-*   **`User`** (extends `AbstractUser`)
-    *   `username`: string
-    *   `email`: string
-    *   `password`: string (hashed)
-    *   `role`: Enum (`teacher`, `student`, `admin`) - Default: `student`
+Handles user management and role-based access. *Note: Authentication is actively managed by a separate team module.*
 
 ### 2. Curriculum (`curriculum`)
-Manages course materials and lessons.
+Manages projects, source files, and course lessons.
 
 **Models:**
-*   **`CourseFile`**
-    *   `user`: ForeignKey -> `User`
-    *   `file`: FileField (stored in `uploads/YYYY/MM/DD/`)
+*   **`Project`**
+    *   `id`: UUID (PK)
+    *   `name`: string
+    *   `description`: text
+    *   `created_at`: DateTime
+    *   `owner`: ForeignKey -> `User`
+*   **`SourceFile`**
+    *   `id`: UUID (PK)
+    *   `owner`: ForeignKey -> `User`
+    *   `file_hash`: string
+    *   `file_url`: URL string
+    *   `file_name`: string
+    *   `file_type`: string
     *   `uploaded_at`: DateTime
 *   **`Lesson`**
-    *   `file`: ForeignKey -> `CourseFile` (The source material for the lesson)
+    *   `id`: UUID (PK)
+    *   `project`: ForeignKey -> `Project`
     *   `title`: string
-    *   `content_text`: Text (extracted text or content for the lesson)
-    *   `lesson_id`: UUID (Unique Identifier)
+    *   `description`: text
     *   `created_at`: DateTime
+*   **`LessonSource`**
+    *   `id`: UUID (PK)
+    *   `lesson`: ForeignKey -> `Lesson`
+    *   `source_file`: ForeignKey -> `SourceFile`
+    *   `extraction_config`: JSON
+    *   `order`: Integer
 
 ### 3. Generators (`generators`)
-Handles the request and storage of AI-generated questions.
+Handles the request and asynchronous generation of AI-driven questions. Heavy processing is dispatched via Celery message queues.
 
 **Models:**
 *   **`GenerationRequest`**
+    *   `id`: UUID (PK)
     *   `lesson`: ForeignKey -> `Lesson`
-    *   `status`: Enum (`Pending`, `Completed`, `Failed`)
-    *   `created_at`: DateTime
-*   **`Question`**
+    *   `status`: Enum (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`)
+    *   `requested_at`: DateTime
+    *   `completed_at`: DateTime (Nullable)
+    *   `error_log`: text (Nullable)
+*   **`GeneratedQuestion`**
+    *   `id`: UUID (PK)
     *   `lesson`: ForeignKey -> `Lesson`
-    *   `type`: Enum (`mcq` - Video Multiple Choice, `tf` - True/False, `short_answer` - Short Answer)
-    *   `statement`: Text (The question itself)
-    *   `explanation`: Text (Why the answer is correct)
+    *   `question_type`: Enum (`mcq`, `tf`, `short_answer`)
+    *   `content`: Text (The question itself)
     *   `correct_answer`: Text
     *   `distractors`: JSONList (List of incorrect options)
+    *   `explanation`: Text
+    *   `created_at`: DateTime
+    *   `chunk_hash`: String (Reference to external inference microservice)
 
 ---
 
 ## API Contracts
 
-### Authentication App (`/api/auth/`)
-
-| Endpoint | Method | Description | Request Body | Response Body |
-| :--- | :--- | :--- | :--- | :--- |
-| `/register/` | `POST` | Register a new user | `{ "username": "str", "email": "str", "password": "str", "role": "str" (opt) }` | `{ "id": int, "username": "str", "email": "str", "role": "str" }` |
-| `/login/` | `POST` | Obtain JWT tokens | `{ "username": "str", "password": "str" }` | `{ "access": "str", "refresh": "str" }` |
-| `/token/refresh/` | `POST` | Refresh access token | `{ "refresh": "str" }` | `{ "access": "str" }` |
+All API endpoints are protected via JWT authentication and strict Role-Based Access Control (Users can only read/edit records belonging to them/their projects).
 
 ### Curriculum App (`/api/curriculum/`)
 
 | Endpoint | Method | Description | Request Body | Response Body |
 | :--- | :--- | :--- | :--- | :--- |
-| `/upload/` | `POST` | Upload a course file (Requires Auth) | `FormData`: `file` (File object) | `{ "id": int, "user": int, "file": "url/path", "uploaded_at": "timestamp" }` |
-| `/lessons/` | `POST` | Create a lesson from content (Requires Auth) | `{ "file": int (CourseFile ID), "title": "str", "content_text": "str" }` | `{ "id": int, "file": int, "title": "str", "content_text": "str", "lesson_id": "uuid", "created_at": "timestamp" }` |
+| `/projects/` | `GET/POST` | List/Create Projects | `{ "name": "str", "description": "str" }` | `{ "id": "uuid", "name": "str", "owner": int... }` |
+| `/projects/{id}/` | `GET/PUT/DELETE` | Read/Update/Delete Project | `{ "name": "str" }` | Project Object |
+| `/source-files/` | `GET/POST` | List/Upload Source Files | FormData with `file`, `file_type`, etc. | Source File Object |
+| `/lessons/` | `GET/POST` | List/Create Lessons | `{ "project": "uuid", "title": "str" }` | Lesson Object |
+| `/lesson-sources/` | `GET/POST` | Context mapping of files to lessons | `{ "lesson": "uuid", "source_file": "uuid", "order": int }` | Lesson Source Object |
 
 ### Generators App (`/api/generators/`)
 
 | Endpoint | Method | Description | Request Body | Response Body |
 | :--- | :--- | :--- | :--- | :--- |
-| `/generate/` | `POST` | Generate questions for a lesson (Requires Auth) | `{ "lesson_id": int, "questions": [{ "type": "mcq", "count": int }] }` | `[ { "id": int, "lesson": int, "type": "mcq", "statement": "str", "explanation": "str", "correct_answer": "str", "distractors": ["str"] }, ... ]` |
+| `/generation-requests/` | `GET/POST` | Request question generation | `{ "lesson": "uuid" }` | `{ "id": "uuid", "status": "PENDING" ... }` (Status 202) |
+| `/generation-requests/{id}/` | `GET` | Poll request status | None | Single Request Object |
+| `/generated-questions/` | `GET` | Fetch completed questions | None | List of Question Objects |
 
 ---
 
-## Question Generation Workflow
+## Question Generation Workflow (Asynchronous Event-Driven)
 
-The Question Generation App follows a structured flow to create educational content based on lessons:
-
-1.  **Request Initiation**:
-    *   The client sends a POST request to `/api/generators/generate/` with the target `lesson_id` and the desired configuration of questions (e.g., 5 MCQs).
-    *   The `Lesson` object is retrieved using the `lesson_id`.
-
-2.  **Tracking**:
-    *   A `GenerationRequest` object is immediately created with status `Pending` to track the lifecycle of this operation.
-
-3.  **Service Invocation**:
-    *   The payload is constructed with the lesson's unique UUID and the question parameters.
-    *   The `AIService.generate_questions` method is called.
-    *   *Current Implementation*: The `AIService` utilizes a mock implementation that returns valid structure consistent with the expected AI output.
-
-4.  **Processing & Storage**:
-    *   The response from the service is parsed.
-    *   For each returned item, a `Question` object is created in the database, linked to the Lesson.
-    *   Fields like `statement`, `explanation`, `correct_answer`, and `distractors` are populated.
-
+1.  **Preparation**: User creates a Project -> Lesson -> Uploads SourceFiles -> Links them via LessonSources.
+2.  **Request Initiation**: Client sends a POST to `/api/generators/generation-requests/` containing the `lesson` ID.
+3.  **Registration & Acknowledgment**: The API saves a `GenerationRequest` with `status="PENDING"`, dispatches a Celery background task, and returns `202 Accepted` immediately so the client doesn't hang.
+4.  **Background Processing**: 
+    - The Celery worker (`celery_worker` container via Redis) picks up the task.
+    - Status updates to `PROCESSING`.
+    - Coordinates extraction via the external AI microservice.
 5.  **Completion**:
-    *   The `GenerationRequest` status is updated to `Completed`.
-    *   The newly created questions are serialized and returned to the client.
-    *   If any error occurs, the status is set to `Failed` and an error response is returned.
+    - Returned content is saved as `GeneratedQuestion`s with microservice `chunk_hash` references.
+    - Request status updates to `COMPLETED` (or `FAILED` if errors occur).
+    - Client polls `/api/generators/generation-requests/{id}/` to detect completion, then fetches from `/api/generators/generated-questions/`.
