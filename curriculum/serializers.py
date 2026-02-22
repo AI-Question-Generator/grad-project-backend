@@ -1,14 +1,26 @@
 from rest_framework import serializers
-from .models import CourseFile, Lesson
+from .models import Project, SourceFile, Lesson, LessonSource
 
-class CourseFileSerializer(serializers.ModelSerializer):
+class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CourseFile
-        fields = ['id', 'user', 'file', 'uploaded_at']
-        read_only_fields = ['user', 'uploaded_at']
+        model = Project
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'owner']
+
+class SourceFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SourceFile
+        fields = '__all__'
+        read_only_fields = ['id', 'uploaded_at', 'owner']
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ['id', 'file', 'title', 'content_text', 'lesson_id', 'created_at']
-        read_only_fields = ['lesson_id', 'created_at']
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+class LessonSourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessonSource
+        fields = '__all__'
+        read_only_fields = ['id']
