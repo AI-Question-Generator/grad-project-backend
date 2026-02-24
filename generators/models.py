@@ -27,6 +27,7 @@ class GeneratedQuestion(models.Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='generated_questions')
+    generation_request = models.ForeignKey(GenerationRequest, on_delete=models.CASCADE, related_name='generated_questions', null=True, blank=True)
     question_type = models.CharField(max_length=50, choices=TYPE_CHOICES)
     content = models.TextField()
     correct_answer = models.TextField()

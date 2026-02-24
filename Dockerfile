@@ -21,11 +21,3 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy project
 COPY . /app/
-
-# Copy entrypoint.sh
-COPY ./entrypoint.sh /app/entrypoint.sh
-# Make entrypoint.sh executable
-RUN chmod +x /app/entrypoint.sh
-
-# Run entrypoint.sh
-ENTRYPOINT ["/app/entrypoint.sh"]
