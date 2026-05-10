@@ -1,16 +1,41 @@
 from rest_framework import viewsets, permissions
+from django.db.models import Count, Prefetch
 from .models import Project, SourceFile, Lesson, LessonSource
-from .serializers import ProjectSerializer, SourceFileSerializer, LessonSerializer, LessonSourceSerializer
+from .serializers import (
+    ProjectSerializer,
+    ProjectResponseSerializer,
+    SourceFileSerializer,
+    LessonSerializer,
+    LessonSourceSerializer,
+)
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return ProjectResponseSerializer
+        return ProjectSerializer
+
     def get_queryset(self):
-        return Project.objects.filter(owner=self.request.user)
+        return (
+            Project.objects
+            .filter(owner=self.request.user)
+            .annotate(lesson_count=Count('lessons'))
+            .prefetch_related(
+                Prefetch(
+                    'lessons',
+                    queryset=Lesson.objects.annotate(
+                        source_count=Count('sources')
+                    ),
+                )
+            )
+        )
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
 
 class SourceFileViewSet(viewsets.ModelViewSet):
     serializer_class = SourceFileSerializer
@@ -22,12 +47,14 @@ class SourceFileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+
 class LessonViewSet(viewsets.ModelViewSet):
     serializer_class = LessonSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return Lesson.objects.filter(project__owner=self.request.user)
+
 
 class LessonSourceViewSet(viewsets.ModelViewSet):
     serializer_class = LessonSourceSerializer
