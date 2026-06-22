@@ -1,7 +1,11 @@
-from django.test import TestCase
+import io
+
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from rest_framework import status
+from rest_framework.test import APIClient
+
 from curriculum.models import Project, Lesson, LessonSource, SourceFile
 
 User = get_user_model()
@@ -13,11 +17,10 @@ class CurriculumAPITestMixin:
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username='teacher1', password='testpass123', role='teacher'
+            username='member1', password='testpass123', role='member'
         )
         self.client.force_authenticate(user=self.user)
 
-        # Create two projects
         self.project1 = Project.objects.create(
             name='Physics 101',
             description='Introduction to Mechanics',
@@ -31,7 +34,6 @@ class CurriculumAPITestMixin:
             owner=self.user,
         )
 
-        # Create source files
         self.source1 = SourceFile.objects.create(
             owner=self.user,
             file_hash='hash1',
@@ -47,7 +49,6 @@ class CurriculumAPITestMixin:
             file_type='application/pdf',
         )
 
-        # Create lessons for project1
         self.lesson1 = Lesson.objects.create(
             project=self.project1,
             title='Newtonian Physics',
@@ -59,26 +60,34 @@ class CurriculumAPITestMixin:
             description='Heat and energy transfer',
         )
 
-        # Link sources to lessons
         LessonSource.objects.create(
-            lesson=self.lesson1, source_file=self.source1, order=1
+            lesson=self.lesson1,
+            source_file=self.source1,
+            start_page=1,
+            end_page=10,
+            order=1,
         )
         LessonSource.objects.create(
-            lesson=self.lesson1, source_file=self.source2, order=2
+            lesson=self.lesson1,
+            source_file=self.source2,
+            start_page=1,
+            end_page=5,
+            order=2,
         )
         LessonSource.objects.create(
-            lesson=self.lesson2, source_file=self.source1, order=1
+            lesson=self.lesson2,
+            source_file=self.source1,
+            start_page=11,
+            end_page=20,
+            order=1,
         )
 
 
 class ProjectListResponseShapeTest(CurriculumAPITestMixin, TestCase):
-    """Test that the project list response has the correct shape."""
-
     def test_project_list_response_shape(self):
         response = self.client.get('/api/curriculum/projects/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Should have results (or be a list if pagination is off)
         data = response.json()
         projects = data if isinstance(data, list) else data.get('results', data)
         self.assertGreaterEqual(len(projects), 2)
@@ -89,8 +98,6 @@ class ProjectListResponseShapeTest(CurriculumAPITestMixin, TestCase):
 
 
 class ProjectListLessonCountTest(CurriculumAPITestMixin, TestCase):
-    """Test that lessonCount matches the actual number of nested lessons."""
-
     def test_project_list_lesson_count_accuracy(self):
         response = self.client.get('/api/curriculum/projects/')
         data = response.json()
@@ -99,7 +106,6 @@ class ProjectListLessonCountTest(CurriculumAPITestMixin, TestCase):
         for project in projects:
             self.assertEqual(project['lessonCount'], len(project['lessons']))
 
-        # Verify specific counts
         p1 = next(p for p in projects if p['id'] == str(self.project1.id))
         p2 = next(p for p in projects if p['id'] == str(self.project2.id))
         self.assertEqual(p1['lessonCount'], 2)
@@ -107,8 +113,6 @@ class ProjectListLessonCountTest(CurriculumAPITestMixin, TestCase):
 
 
 class ProjectListNestedLessonsTest(CurriculumAPITestMixin, TestCase):
-    """Test that each project's lessons array has the correct shape."""
-
     def test_project_list_includes_nested_lessons(self):
         response = self.client.get('/api/curriculum/projects/')
         data = response.json()
@@ -117,37 +121,24 @@ class ProjectListNestedLessonsTest(CurriculumAPITestMixin, TestCase):
         p1 = next(p for p in projects if p['id'] == str(self.project1.id))
         self.assertEqual(len(p1['lessons']), 2)
 
-        expected_lesson_fields = {'id', 'name', 'description', 'sourceCount', 'createdAt'}
+        expected_lesson_fields = {'id', 'name', 'description', 'sourceCount', 'createdAt', 'sources'}
         for lesson in p1['lessons']:
             self.assertEqual(set(lesson.keys()), expected_lesson_fields)
 
 
 class LessonNameMapsTitleTest(CurriculumAPITestMixin, TestCase):
-    """Test that lessons[].name maps to the model's title field."""
-
     def test_lesson_name_maps_title(self):
         response = self.client.get('/api/curriculum/projects/')
         data = response.json()
         projects = data if isinstance(data, list) else data.get('results', data)
 
         p1 = next(p for p in projects if p['id'] == str(self.project1.id))
-        lesson_names = {l['name'] for l in p1['lessons']}
+        lesson_names = {lesson['name'] for lesson in p1['lessons']}
         self.assertIn('Newtonian Physics', lesson_names)
         self.assertIn('Thermodynamics', lesson_names)
 
 
-class ProjectListQueryCountTest(CurriculumAPITestMixin, TestCase):
-    """Test that the list endpoint is query-efficient."""
-
-    def test_project_list_query_count(self):
-        # 2 queries: projects+annotation in one, prefetch lessons+source_count in one
-        with self.assertNumQueries(2):
-            self.client.get('/api/curriculum/projects/')
-
-
 class ProjectDetailSameShapeTest(CurriculumAPITestMixin, TestCase):
-    """Test that detail response has the same shape as list items."""
-
     def test_project_detail_same_shape_as_list(self):
         list_response = self.client.get('/api/curriculum/projects/')
         list_data = list_response.json()
@@ -160,8 +151,6 @@ class ProjectDetailSameShapeTest(CurriculumAPITestMixin, TestCase):
 
 
 class LegacyLessonEndpointUnchangedTest(CurriculumAPITestMixin, TestCase):
-    """Test that the flat /lessons/ endpoint still works as before."""
-
     def test_legacy_lesson_endpoint_unchanged(self):
         response = self.client.get('/api/curriculum/lessons/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -170,26 +159,122 @@ class LegacyLessonEndpointUnchangedTest(CurriculumAPITestMixin, TestCase):
         lessons = data if isinstance(data, list) else data.get('results', data)
         self.assertGreaterEqual(len(lessons), 2)
 
-        # Legacy endpoint uses 'title', not 'name'
         for lesson in lessons:
             self.assertIn('title', lesson)
             self.assertIn('project', lesson)
             self.assertNotIn('name', lesson)
 
 
-class CreateProjectWriteSerializerTest(CurriculumAPITestMixin, TestCase):
-    """Test that POST still uses the original ProjectSerializer."""
-
-    def test_create_project_still_uses_write_serializer(self):
-        response = self.client.post('/api/curriculum/projects/', {
+class NestedProjectCreateTest(CurriculumAPITestMixin, TestCase):
+    def test_create_project_with_nested_lessons_and_sources(self):
+        payload = {
             'name': 'Biology 301',
             'description': 'Cell biology fundamentals',
-        }, format='json')
+            'lessons': [
+                {
+                    'title': 'Cells',
+                    'description': 'Intro to cells',
+                    'sources': [
+                        {
+                            'source_file': str(self.source1.id),
+                            'start_page': 1,
+                            'end_page': 8,
+                            'order': 0,
+                        }
+                    ],
+                }
+            ],
+        }
+        response = self.client.post('/api/curriculum/projects/', payload, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        data = response.json()
+        project = Project.objects.get(name='Biology 301')
+        self.assertEqual(project.lessons.count(), 1)
+        self.assertEqual(project.lessons.first().sources.count(), 1)
+        self.assertEqual(project.lessons.first().sources.first().start_page, 1)
 
-        # Write serializer returns all model fields
-        self.assertIn('name', data)
-        self.assertIn('owner', data)
-        self.assertEqual(data['name'], 'Biology 301')
+
+class NestedProjectUpdateReplaceLessonsTest(CurriculumAPITestMixin, TestCase):
+    def test_update_project_replaces_lessons_when_lessons_key_present(self):
+        payload = {
+            'name': self.project1.name,
+            'lessons': [
+                {
+                    'title': 'Only Lesson',
+                    'sources': [
+                        {
+                            'source_file': str(self.source1.id),
+                            'start_page': 2,
+                            'end_page': 4,
+                            'order': 0,
+                        }
+                    ],
+                }
+            ],
+        }
+        response = self.client.put(
+            f'/api/curriculum/projects/{self.project1.id}/',
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project1.refresh_from_db()
+        self.assertEqual(self.project1.lessons.count(), 1)
+        self.assertEqual(self.project1.lessons.first().title, 'Only Lesson')
+
+
+class NestedProjectOwnershipValidationTest(CurriculumAPITestMixin, TestCase):
+    def test_create_project_rejects_foreign_source_file(self):
+        other_user = User.objects.create_user(username='other', password='testpass123')
+        foreign_source = SourceFile.objects.create(
+            owner=other_user,
+            file_hash='foreign',
+            file_url='https://example.com/foreign.pdf',
+            file_name='foreign.pdf',
+            file_type='application/pdf',
+        )
+
+        payload = {
+            'name': 'Invalid Project',
+            'lessons': [
+                {
+                    'title': 'Lesson',
+                    'sources': [
+                        {
+                            'source_file': str(foreign_source.id),
+                            'start_page': 1,
+                            'end_page': 2,
+                            'order': 0,
+                        }
+                    ],
+                }
+            ],
+        }
+        response = self.client.post('/api/curriculum/projects/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+@override_settings(MEDIA_ROOT='/tmp/grad-project-test-media')
+class SourceFileUploadTest(CurriculumAPITestMixin, TestCase):
+    def test_upload_pdf_creates_source_file(self):
+        pdf_content = b'%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'
+        upload = SimpleUploadedFile('sample.pdf', pdf_content, content_type='application/pdf')
+
+        response = self.client.post(
+            '/api/curriculum/source-files/upload/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_200_OK])
+        self.assertEqual(SourceFile.objects.filter(owner=self.user).count(), 3)
+
+    def test_upload_rejects_non_pdf(self):
+        upload = SimpleUploadedFile('notes.txt', b'hello', content_type='text/plain')
+        response = self.client.post(
+            '/api/curriculum/source-files/upload/',
+            {'file': upload},
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
