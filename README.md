@@ -101,3 +101,24 @@ All API endpoints are protected via JWT authentication and strict Role-Based Acc
     - Returned content is saved as `GeneratedQuestion`s with microservice `chunk_hash` references.
     - Request status updates to `COMPLETED` (or `FAILED` if errors occur).
     - Client polls `/api/generators/generation-requests/{id}/` to detect completion, then fetches from `/api/generators/generated-questions/`.
+
+## Railway Deployment
+
+For Railway, run Celery in its own service and point it at the Redis service URL provided by Railway, not `localhost`.
+
+Recommended environment variables:
+
+- `DATABASE_URL`
+- `SECRET_KEY`
+- `DEBUG=False`
+- `ALLOWED_HOSTS=your-app.up.railway.app`
+- `REDIS_URL` or `REDIS_PRIVATE_URL`
+- `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` if you want to override the Redis URL manually
+
+Recommended Celery start command:
+
+```bash
+celery -A config worker -l info --concurrency=1
+```
+
+If the worker still gets killed by Railway on a small instance, try `--pool=solo` as a fallback.
