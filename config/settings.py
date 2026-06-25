@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
+    'drf_spectacular',  # Added for Swagger/OpenAPI
     
     # Local Apps
     'authentication',
@@ -36,6 +37,9 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     'drf_spectacular',
+
+    'django_extensions',
+
 
 ]
 
@@ -105,6 +109,7 @@ STATIC_URL = 'static/'
 # Media Files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+MAX_SOURCE_FILE_SIZE = 20 * 1024 * 1024
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -141,6 +146,7 @@ REST_FRAMEWORK = {
 
    'DEFAULT_SCHEMA_CLASS': 
         'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # Simple JWT

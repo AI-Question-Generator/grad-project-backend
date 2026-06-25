@@ -57,7 +57,7 @@ class AuthAPITester:
             "password2": "SecurePassword123!",
             "first_name": "Test",
             "last_name": "User",
-            "role": "student"
+            "role": "member"
         }
         
         self.print_test("User Registration", "POST", endpoint, "PENDING")
