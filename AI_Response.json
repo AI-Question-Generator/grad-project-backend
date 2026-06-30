@@ -1,0 +1,72 @@
+{
+    "status_code": 200,
+    "results": [
+        {
+            "project_id": "1",
+            "results": [
+                {
+                    "question_type": "mcq",
+                    "questions": {
+                        "signal": "Question generation failed",
+                        "ideas_processed": 0,
+                        "questions_generated": []
+                    }
+                },
+                {
+                    "question_type": "mcq",
+                    "questions": {
+                        "signal": "Question generation completed successfully",
+                        "ideas_processed": 3,
+                        "questions_generated": [
+                            {
+                                "question_statement": "After she ....... the ticket, she took the train.",
+                                "explanation": "The Past Perfect tense (had booked) is used to show that booking the ticket happened before taking the train.",
+                                "correct_answer": "had booked",
+                                "plausible_distractors": [
+                                    "booked",
+                                    "books",
+                                    "will book"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "question_type": "tf",
+                    "questions": {
+                        "signal": "Question generation completed successfully",
+                        "ideas_processed": 2,
+                        "questions_generated": [
+                            {
+                                "question_statement": "In the Past Simple tense, the verb 'to be' is conjugated as 'were' for singular subjects such as 'he' or 'she'.",
+                                "explanation": "This statement is false. The verb 'to be' in the Past Simple is 'was' for singular subjects (e.g., 'he was') and 'were' for plural subjects (e.g., 'they were').",
+                                "correct_answer": "False"
+                            },
+                            {
+                                "question_statement": "The sentence 'He lived for five years' correctly uses 'for' to indicate the duration of the action.",
+                                "explanation": "True. 'For' is used to express a duration of time, while 'since' indicates the starting point of an action. The example correctly applies 'for' to describe how long the action lasted.",
+                                "correct_answer": "True"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "question_type": "short_answer",
+                    "questions": {
+                        "signal": "Question generation failed",
+                        "ideas_processed": 0,
+                        "questions_generated": []
+                    }
+                },
+                {
+                    "question_type": "short_answer",
+                    "questions": {
+                        "signal": "Question generation completed successfully",
+                        "ideas_processed": 4,
+                        "questions_generated": []
+                    }
+                }
+            ]
+        }
+    ]
+}
