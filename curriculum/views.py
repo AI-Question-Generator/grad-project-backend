@@ -1,13 +1,14 @@
 from django.db.models import Count, Prefetch
-from rest_framework import viewsets, permissions, status
+from drf_spectacular.utils import extend_schema
+from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from .models import Project, SourceFile, Lesson, LessonSource
 from .serializers import (
     ProjectWriteSerializer,
     ProjectResponseSerializer,
-    SourceFileSerializer,
     SourceFileUploadSerializer,
     SourceFileResponseSerializer,
     LessonSerializer,
@@ -53,21 +54,40 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
 
-class SourceFileViewSet(viewsets.ModelViewSet):
+class SourceFileViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+    queryset = SourceFile.objects.all()
 
     def get_serializer_class(self):
-        if self.action in ('list', 'retrieve', 'upload'):
+        # FIX: Remove 'upload' from this list. 
+        # This forces the action to return SourceFileUploadSerializer globally,
+        # which allows Swagger to correctly map the multipart form-data request schema.
+        if self.action in ('list', 'retrieve'):
             return SourceFileResponseSerializer
-        return SourceFileSerializer
+        return SourceFileUploadSerializer
 
     def get_queryset(self):
         return SourceFile.objects.filter(owner=self.request.user)
 
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
-
-    @action(detail=False, methods=['post'], url_path='upload')
+    @extend_schema(
+        request=SourceFileUploadSerializer,
+        responses={
+            status.HTTP_200_OK: SourceFileResponseSerializer,
+            status.HTTP_201_CREATED: SourceFileResponseSerializer,
+        },
+    )
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='upload',
+        parser_classes=[MultiPartParser, FormParser],
+    )
     def upload(self, request):
         serializer = SourceFileUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -80,7 +100,9 @@ class SourceFileViewSet(viewsets.ModelViewSet):
             response_serializer = SourceFileResponseSerializer(existing)
             return Response(response_serializer.data, status=status.HTTP_200_OK)
 
+        # Your validation custom-injects page_count into the file object cleanly
         page_count = getattr(uploaded_file, 'page_count', None)
+        
         source_file = SourceFile.objects.create(
             owner=request.user,
             file=uploaded_file,

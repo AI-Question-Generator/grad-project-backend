@@ -278,3 +278,56 @@ class SourceFileUploadTest(CurriculumAPITestMixin, TestCase):
             format='multipart',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_upload_allows_same_file_for_different_users(self):
+        pdf_content = b'%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'
+
+        first_upload = SimpleUploadedFile('same.pdf', pdf_content, content_type='application/pdf')
+        response1 = self.client.post(
+            '/api/curriculum/source-files/upload/',
+            {'file': first_upload},
+            format='multipart',
+        )
+        self.assertIn(response1.status_code, [status.HTTP_201_CREATED, status.HTTP_200_OK])
+
+        other_user = User.objects.create_user(
+            username='member2', password='testpass123', role='member'
+        )
+        self.client.force_authenticate(user=other_user)
+
+        second_upload = SimpleUploadedFile('same.pdf', pdf_content, content_type='application/pdf')
+        response2 = self.client.post(
+            '/api/curriculum/source-files/upload/',
+            {'file': second_upload},
+            format='multipart',
+        )
+        self.assertIn(response2.status_code, [status.HTTP_201_CREATED, status.HTTP_200_OK])
+
+        self.assertEqual(SourceFile.objects.filter(file_hash=response1.data['fileHash']).count(), 2)
+
+    def test_source_file_allows_only_upload_and_delete(self):
+        list_response = self.client.get('/api/curriculum/source-files/')
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+
+        source = SourceFile.objects.create(
+            owner=self.user,
+            file_hash='delete_hash',
+            file_name='to_delete.pdf',
+            file_type='application/pdf',
+            file_url='https://example.com/to_delete.pdf',
+        )
+
+        detail_response = self.client.get(f'/api/curriculum/source-files/{source.id}/')
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(
+            self.client.put(f'/api/curriculum/source-files/{source.id}/').status_code,
+            status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+        self.assertEqual(
+            self.client.patch(f'/api/curriculum/source-files/{source.id}/').status_code,
+            status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+        delete_response = self.client.delete(f'/api/curriculum/source-files/{source.id}/')
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)

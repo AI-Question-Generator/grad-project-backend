@@ -81,7 +81,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 
 class SourceFileUploadSerializer(serializers.Serializer):
-    file = serializers.FileField()
+    file = serializers.FileField(use_url=False)
 
     def validate_file(self, value):
         from .utils import validate_pdf_upload
@@ -93,13 +93,6 @@ class SourceFileUploadSerializer(serializers.Serializer):
 
         value.page_count = page_count
         return value
-
-
-class SourceFileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SourceFile
-        fields = '__all__'
-        read_only_fields = ['id', 'uploaded_at', 'owner', 'file_hash', 'file_url', 'file_size', 'page_count']
 
 
 class SourceFileResponseSerializer(serializers.ModelSerializer):
