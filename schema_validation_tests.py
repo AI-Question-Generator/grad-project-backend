@@ -4,6 +4,7 @@ Tests all schema changes: User roles, SourceFile, LessonSource, QuestionType, Ge
 """
 
 import io
+from django.db import IntegrityError, transaction
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -104,7 +105,7 @@ class SourceFileSchemaTest(TestCase):
         self.assertFalse(SourceFile.objects.filter(id=source.id).exists())
 
     def test_source_file_hash_dedup_per_user(self):
-        """Test file_hash uniqueness for deduplication"""
+        """Test file_hash is unique per user and reusable across users"""
         SourceFile.objects.create(
             owner=self.user,
             file_hash='unique_hash',
@@ -113,15 +114,30 @@ class SourceFileSchemaTest(TestCase):
             file_url='https://example.com/file1.pdf'
         )
 
-        # Try to create duplicate - should fail due to unique constraint
-        with self.assertRaises(Exception):  # IntegrityError
-            SourceFile.objects.create(
-                owner=self.user,
-                file_hash='unique_hash',
-                file_name='file2.pdf',
-                file_type='application/pdf',
-                file_url='https://example.com/file2.pdf'
-            )
+        # Same user duplicate should fail
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                SourceFile.objects.create(
+                    owner=self.user,
+                    file_hash='unique_hash',
+                    file_name='file2.pdf',
+                    file_type='application/pdf',
+                    file_url='https://example.com/file2.pdf'
+                )
+
+        # Different user can reuse the same file hash
+        other_user = User.objects.create_user(
+            username='testuser2',
+            password='testpass123',
+            role='member'
+        )
+        SourceFile.objects.create(
+            owner=other_user,
+            file_hash='unique_hash',
+            file_name='file3.pdf',
+            file_type='application/pdf',
+            file_url='https://example.com/file3.pdf'
+        )
 
 
 class LessonSourceSchemaTest(TestCase):

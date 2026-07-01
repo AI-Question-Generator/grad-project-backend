@@ -23,7 +23,7 @@ class SourceFile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='source_files')
     file = models.FileField(upload_to='source_files/%Y/%m/', blank=True, null=True)
-    file_hash = models.CharField(max_length=255, unique=True)
+    file_hash = models.CharField(max_length=255)
     file_url = models.URLField(max_length=1024, blank=True)
     file_name = models.CharField(max_length=255)
     file_type = models.CharField(max_length=50)
@@ -33,8 +33,8 @@ class SourceFile(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
-        indexes = [
-            models.Index(fields=['owner', 'file_hash']),
+        constraints = [
+            models.UniqueConstraint(fields=['owner', 'file_hash'], name='unique_owner_file_hash'),
         ]
 
     def __str__(self):
