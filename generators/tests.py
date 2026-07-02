@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from curriculum.models import Project, Lesson, SourceFile, LessonSource
-from generators.models import GenerationRequest, GeneratedQuestion, QuestionType
+from generators.models import GenerationRequest, GenerationRequestQuestionConfig, GeneratedQuestion, QuestionType
 from generators.tasks import process_generation_request
 
 User = get_user_model()
@@ -34,8 +34,21 @@ class GenerationAPITestCase(APITestCase):
         url = reverse('generation-request-list')
         data = {
             'project': str(self.project.id),
-            'lesson_ids': [str(self.lesson.id), str(self.lesson2.id)],
-            'question_type_ids': [str(self.mcq_type.id), str(self.tf_type.id)],
+            'lessons': [
+                {
+                    'lesson_id': str(self.lesson.id),
+                    'question_types': [
+                        {'question_type_id': str(self.mcq_type.id), 'num_questions': 2},
+                        {'question_type_id': str(self.tf_type.id), 'num_questions': 1},
+                    ],
+                },
+                {
+                    'lesson_id': str(self.lesson2.id),
+                    'question_types': [
+                        {'question_type_id': str(self.mcq_type.id), 'num_questions': 1},
+                    ],
+                },
+            ],
         }
 
         response = self.client.post(url, data, format='json')
@@ -45,7 +58,7 @@ class GenerationAPITestCase(APITestCase):
         generation_request = GenerationRequest.objects.get()
         self.assertEqual(generation_request.status, 'PENDING')
         self.assertEqual(generation_request.lessons.count(), 2)
-        self.assertEqual(generation_request.question_types.count(), 2)
+        self.assertEqual(generation_request.question_configs.count(), 3)
         mock_delay.assert_called_once()
 
     def test_list_generation_requests_scoped_to_user(self):
@@ -87,10 +100,14 @@ class GenerationAPITestCase(APITestCase):
     def test_process_generation_request_task(self):
         generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
         generation_request.lessons.add(self.lesson)
-        generation_request.question_types.add(self.mcq_type)
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.mcq_type,
+            num_questions=1,
+        )
 
-        with patch('generators.tasks.time.sleep', return_value=None):
-            process_generation_request(str(generation_request.id))
+        process_generation_request(str(generation_request.id))
 
         generation_request.refresh_from_db()
         self.assertEqual(generation_request.status, 'COMPLETED')

@@ -3,24 +3,17 @@ import logging
 
 import requests
 from celery import shared_task
-from django.conf import settings
 from django.utils import timezone
 
 from .models import GenerationRequest, GeneratedQuestion, QuestionType
+from .services import AIServiceClient
 
 logger = logging.getLogger(__name__)
 
 AI_SUCCESS_SIGNAL = 'Question generation completed successfully'
 
 
-def build_ai_payload(req):
-    """
-    Build the AI service request payload.
-
-    The AI service's "project_id" is actually our lesson_id - it doesn't
-    know about our Project model, it just needs a unique key per lesson
-    so it can tell us which generated questions belong to which lesson.
-    """
+def build_ai_tasks(req):
     tasks = []
     configs_by_lesson = {}
     for config in req.question_configs.select_related('lesson', 'question_type').all():
@@ -44,17 +37,6 @@ def build_ai_payload(req):
     return {"tasks": tasks}
 
 
-def call_ai_service(payload):
-    response = requests.post(
-        settings.AI_SERVICE_URL,
-        json=payload,
-        headers={"Authorization": f"Bearer {settings.AI_SERVICE_API_KEY}"},
-        timeout=settings.AI_SERVICE_TIMEOUT if hasattr(settings, 'AI_SERVICE_TIMEOUT') else 120,
-    )
-    response.raise_for_status()
-    return response.json()
-
-
 def process_ai_response(req, ai_response):
     """
     Parse the AI service response and create GeneratedQuestion rows.
@@ -73,7 +55,27 @@ def process_ai_response(req, ai_response):
 
     had_failures = False
 
-    for project_result in ai_response.get('results', []):
+    results = ai_response.get('results')
+    if results is None and 'content' in ai_response:
+        results = []
+        for lesson_result in ai_response.get('content', []):
+            results.append(
+                {
+                    'project_id': lesson_result.get('lesson_id'),
+                    'results': [
+                        {
+                            'question_type': question.get('type'),
+                            'questions': {
+                                'signal': AI_SUCCESS_SIGNAL,
+                                'questions_generated': [question],
+                            },
+                        }
+                        for question in lesson_result.get('questions', [])
+                    ],
+                }
+            )
+
+    for project_result in results or []:
         ai_project_id = project_result.get('project_id')
         lesson = lessons_by_id.get(str(ai_project_id))
         if lesson is None:
@@ -106,7 +108,7 @@ def process_ai_response(req, ai_response):
                     correct_answer=q.get('correct_answer', ''),
                     distractors=q.get('plausible_distractors', []),
                     explanation=q.get('explanation', ''),
-                    chunk_hash=str(uuid.uuid4()),
+                    chunk_hash=q.get('chunk_hash') or str(uuid.uuid4()),
                 )
 
     return had_failures
@@ -125,7 +127,7 @@ def process_generation_request(self, request_id):
         req.status = 'PROCESSING'
         req.save(update_fields=['status'])
 
-        payload = build_ai_payload(req)
+        payload = build_ai_tasks(req)
 
         if not payload['tasks']:
             req.status = 'FAILED'
@@ -134,7 +136,8 @@ def process_generation_request(self, request_id):
             req.save(update_fields=['status', 'error_log', 'completed_at'])
             return
 
-        ai_response = call_ai_service(payload)
+        client = AIServiceClient()
+        ai_response = client.safe_generate_questions(payload['tasks'])
         had_failures = process_ai_response(req, ai_response)
 
         req.status = 'COMPLETED_WITH_ERRORS' if had_failures else 'COMPLETED'

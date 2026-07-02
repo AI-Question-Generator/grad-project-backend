@@ -43,6 +43,19 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         fields = ['name', 'description', 'is_default', 'lessons']
         read_only_fields = ['id', 'created_at', 'owner']
 
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        is_default = attrs.get('is_default', getattr(self.instance, 'is_default', False))
+
+        if self.instance and self.instance.is_default:
+            raise serializers.ValidationError('Default projects are read-only.')
+
+        if is_default and (user is None or getattr(user, 'role', None) != 'admin'):
+            raise serializers.ValidationError('Only admins can create default projects.')
+
+        return attrs
+
     def _create_lessons(self, project, lessons_data):
         for lesson_data in lessons_data:
             sources_data = lesson_data.pop('sources', [])
@@ -115,6 +128,19 @@ class LessonSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at']
 
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        project = attrs.get('project') or getattr(self.instance, 'project', None)
+
+        if project and project.is_default:
+            raise serializers.ValidationError('Default projects are read-only.')
+
+        if project and request and project.owner_id != user.id and getattr(user, 'role', None) != 'admin':
+            raise serializers.ValidationError('Lesson does not belong to the current user.')
+
+        return attrs
+
 
 class LessonSourceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -131,6 +157,9 @@ class LessonSourceSerializer(serializers.ModelSerializer):
         source_file = attrs.get('source_file') or getattr(self.instance, 'source_file', None)
         lesson = attrs.get('lesson') or getattr(self.instance, 'lesson', None)
         request = self.context.get('request')
+
+        if lesson and lesson.project.is_default:
+            raise serializers.ValidationError('Default projects are read-only.')
 
         if source_file and request and source_file.owner_id != request.user.id:
             raise serializers.ValidationError('Source file does not belong to the current user.')
@@ -178,3 +207,24 @@ class ProjectResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['id', 'name', 'description', 'isDefault', 'lessonCount', 'createdAt', 'lessons']
+
+
+class ProjectSetupStatusSerializer(serializers.ModelSerializer):
+    setupStatus = serializers.CharField(source='ai_setup_status', read_only=True)
+    setupFeedback = serializers.CharField(source='ai_setup_feedback', read_only=True)
+    setupStartedAt = serializers.DateTimeField(source='ai_setup_started_at', read_only=True)
+    setupCompletedAt = serializers.DateTimeField(source='ai_setup_completed_at', read_only=True)
+
+    class Meta:
+        model = Project
+        fields = ['id', 'setupStatus', 'setupFeedback', 'setupStartedAt', 'setupCompletedAt']
+
+
+class ProjectCreateResponseSerializer(ProjectResponseSerializer):
+    setup = serializers.SerializerMethodField()
+
+    class Meta(ProjectResponseSerializer.Meta):
+        fields = ProjectResponseSerializer.Meta.fields + ['setup']
+
+    def get_setup(self, obj):
+        return ProjectSetupStatusSerializer(obj).data

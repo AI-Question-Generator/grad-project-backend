@@ -8,10 +8,28 @@ User = settings.AUTH_USER_MODEL
 
 
 class Project(models.Model):
+    SETUP_PENDING = 'PENDING'
+    SETUP_PROCESSING = 'PROCESSING'
+    SETUP_COMPLETED = 'COMPLETED'
+    SETUP_COMPLETED_WITH_ERRORS = 'COMPLETED_WITH_ERRORS'
+    SETUP_FAILED = 'FAILED'
+
+    SETUP_STATUS_CHOICES = (
+        (SETUP_PENDING, 'Pending'),
+        (SETUP_PROCESSING, 'Processing'),
+        (SETUP_COMPLETED, 'Completed'),
+        (SETUP_COMPLETED_WITH_ERRORS, 'Completed with errors'),
+        (SETUP_FAILED, 'Failed'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     is_default = models.BooleanField(default=False)
+    ai_setup_status = models.CharField(max_length=30, choices=SETUP_STATUS_CHOICES, default=SETUP_PENDING)
+    ai_setup_feedback = models.TextField(blank=True, null=True)
+    ai_setup_started_at = models.DateTimeField(null=True, blank=True)
+    ai_setup_completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects')
 
@@ -81,10 +99,6 @@ class LessonSource(models.Model):
                 raise ValidationError(
                     f'end_page cannot exceed source file page count ({self.source_file.page_count}).'
                 )
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         self.full_clean()

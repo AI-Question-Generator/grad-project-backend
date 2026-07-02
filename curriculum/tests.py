@@ -1,4 +1,5 @@
 import io
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -166,7 +167,8 @@ class LegacyLessonEndpointUnchangedTest(CurriculumAPITestMixin, TestCase):
 
 
 class NestedProjectCreateTest(CurriculumAPITestMixin, TestCase):
-    def test_create_project_with_nested_lessons_and_sources(self):
+    @patch('curriculum.views.setup_project_ai.delay')
+    def test_create_project_with_nested_lessons_and_sources(self, mock_delay):
         payload = {
             'name': 'Biology 301',
             'description': 'Cell biology fundamentals',
@@ -188,16 +190,18 @@ class NestedProjectCreateTest(CurriculumAPITestMixin, TestCase):
         response = self.client.post('/api/curriculum/projects/', payload, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['setup']['setupStatus'], 'PENDING')
         project = Project.objects.get(name='Biology 301')
         self.assertEqual(project.lessons.count(), 1)
         self.assertEqual(project.lessons.first().sources.count(), 1)
         self.assertEqual(project.lessons.first().sources.first().start_page, 1)
+        mock_delay.assert_called_once()
 
 
 class NestedProjectUpdateReplaceLessonsTest(CurriculumAPITestMixin, TestCase):
     def test_update_project_replaces_lessons_when_lessons_key_present(self):
         payload = {
-            'name': self.project1.name,
+            'name': self.project2.name,
             'lessons': [
                 {
                     'title': 'Only Lesson',
@@ -213,15 +217,86 @@ class NestedProjectUpdateReplaceLessonsTest(CurriculumAPITestMixin, TestCase):
             ],
         }
         response = self.client.put(
-            f'/api/curriculum/projects/{self.project1.id}/',
+            f'/api/curriculum/projects/{self.project2.id}/',
             payload,
             format='json',
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project2.refresh_from_db()
+        self.assertEqual(self.project2.lessons.count(), 1)
+        self.assertEqual(self.project2.lessons.first().title, 'Only Lesson')
+
+
+class DefaultProjectReadOnlyTest(CurriculumAPITestMixin, TestCase):
+    def test_default_project_cannot_be_modified(self):
+        payload = {'name': 'Updated Default Project'}
+
+        update_response = self.client.put(
+            f'/api/curriculum/projects/{self.project1.id}/',
+            payload,
+            format='json',
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        delete_response = self.client.delete(f'/api/curriculum/projects/{self.project1.id}/')
+        self.assertEqual(delete_response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class DefaultProjectVisibilityTest(CurriculumAPITestMixin, TestCase):
+    def test_default_project_is_visible_to_other_users(self):
+        other_user = User.objects.create_user(username='viewer', password='testpass123', role='member')
+        self.client.force_authenticate(user=other_user)
+
+        response = self.client.get('/api/curriculum/projects/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        projects = data if isinstance(data, list) else data.get('results', data)
+        project_ids = {project['id'] for project in projects}
+        self.assertIn(str(self.project1.id), project_ids)
+
+
+class ProjectSetupStatusTest(CurriculumAPITestMixin, TestCase):
+    def test_setup_status_endpoint_returns_feedback(self):
+        self.project2.ai_setup_status = 'COMPLETED'
+        self.project2.ai_setup_feedback = 'AI setup completed successfully.'
+        self.project2.save(update_fields=['ai_setup_status', 'ai_setup_feedback'])
+
+        response = self.client.get(f'/api/curriculum/projects/{self.project2.id}/setup-status/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['setupStatus'], 'COMPLETED')
+        self.assertEqual(response.data['setupFeedback'], 'AI setup completed successfully.')
+
+
+class ProjectSetupLessonScopedAiCallsTest(CurriculumAPITestMixin, TestCase):
+    @patch('curriculum.tasks.AIServiceClient')
+    def test_setup_project_ai_uses_lesson_ids(self, mock_ai_client_class):
+        mock_client = mock_ai_client_class.return_value
+        mock_client.create_project.return_value = None
+        mock_client.upload_text.return_value = None
+        mock_client.process_project.return_value = None
+        mock_client.extract_main_ideas.return_value = None
+        mock_client.associate_chunks.return_value = None
+
+        from curriculum.tasks import setup_project_ai
+
+        setup_project_ai(str(self.project1.id))
+
+        lesson_ids = {str(self.lesson1.id), str(self.lesson2.id)}
+        create_calls = {call.args[0] for call in mock_client.create_project.call_args_list}
+        process_calls = {call.args[0] for call in mock_client.process_project.call_args_list}
+        extract_calls = {call.args[0] for call in mock_client.extract_main_ideas.call_args_list}
+        associate_calls = {call.args[0] for call in mock_client.associate_chunks.call_args_list}
+
+        self.assertSetEqual(create_calls, lesson_ids)
+        self.assertSetEqual(process_calls, lesson_ids)
+        self.assertSetEqual(extract_calls, lesson_ids)
+        self.assertSetEqual(associate_calls, lesson_ids)
+
         self.project1.refresh_from_db()
-        self.assertEqual(self.project1.lessons.count(), 1)
-        self.assertEqual(self.project1.lessons.first().title, 'Only Lesson')
+        self.assertEqual(self.project1.ai_setup_status, 'COMPLETED')
+        self.assertIn('lesson(s)', self.project1.ai_setup_feedback)
 
 
 class NestedProjectOwnershipValidationTest(CurriculumAPITestMixin, TestCase):

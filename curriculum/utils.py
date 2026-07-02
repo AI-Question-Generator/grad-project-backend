@@ -1,4 +1,5 @@
 import hashlib
+from io import BytesIO
 
 from django.conf import settings
 from pypdf import PdfReader
@@ -50,3 +51,38 @@ def build_file_url(request, file_field):
     if not file_field:
         return ''
     return request.build_absolute_uri(file_field.url)
+
+
+def extract_source_file_text(source_file, start_page=None, end_page=None):
+    """Return plain text for a source file or page slice.
+
+    Falls back to a deterministic placeholder when the file is not
+    backed by a local upload. That keeps local tests and imported records
+    usable even when only metadata exists.
+    """
+    if not source_file.file:
+        return source_file.file_name or ''
+
+    file_obj = source_file.file
+    try:
+        if hasattr(file_obj, 'path') and file_obj.path:
+            reader = PdfReader(file_obj.path)
+        else:
+            file_obj.seek(0)
+            reader = PdfReader(BytesIO(file_obj.read()))
+    except Exception:
+        return source_file.file_name or ''
+    finally:
+        try:
+            file_obj.seek(0)
+        except Exception:
+            pass
+
+    first_page = max((start_page or 1) - 1, 0)
+    last_page = end_page or len(reader.pages)
+    extracted_parts = []
+    for page in reader.pages[first_page:last_page]:
+        extracted_parts.append(page.extract_text() or '')
+
+    text = '\n'.join(part.strip() for part in extracted_parts if part and part.strip()).strip()
+    return text or (source_file.file_name or '')

@@ -277,18 +277,34 @@ class GenerationRequestSchemaTest(TestCase):
         self.assertIn(self.lesson1, gen_request.lessons.all())
         self.assertIn(self.lesson2, gen_request.lessons.all())
 
-    def test_generation_request_m2m_question_types(self):
-        """Test GenerationRequest M2M relationship with QuestionTypes"""
+    def test_generation_request_question_configs(self):
+        """Test GenerationRequest configuration with lessons and question types via GenerationRequestQuestionConfig"""
         gen_request = GenerationRequest.objects.create(
             user=self.user,
             project=self.project,
             status='PENDING'
         )
-        gen_request.question_types.add(self.mcq_type, self.tf_type)
+        gen_request.lessons.add(self.lesson1, self.lesson2)
 
-        self.assertEqual(gen_request.question_types.count(), 2)
-        self.assertIn(self.mcq_type, gen_request.question_types.all())
-        self.assertIn(self.tf_type, gen_request.question_types.all())
+        from generators.models import GenerationRequestQuestionConfig
+
+        config1 = GenerationRequestQuestionConfig.objects.create(
+            generation_request=gen_request,
+            lesson=self.lesson1,
+            question_type=self.mcq_type,
+            num_questions=3
+        )
+        config2 = GenerationRequestQuestionConfig.objects.create(
+            generation_request=gen_request,
+            lesson=self.lesson2,
+            question_type=self.tf_type,
+            num_questions=2
+        )
+
+        self.assertEqual(gen_request.lessons.count(), 2)
+        self.assertEqual(gen_request.question_configs.count(), 2)
+        self.assertIn(config1, gen_request.question_configs.all())
+        self.assertIn(config2, gen_request.question_configs.all())
 
 
 class GeneratedQuestionSchemaTest(TestCase):

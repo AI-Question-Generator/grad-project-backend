@@ -1,20 +1,24 @@
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 
 from .models import Project, SourceFile, Lesson, LessonSource
 from .serializers import (
     ProjectWriteSerializer,
     ProjectResponseSerializer,
+    ProjectCreateResponseSerializer,
+    ProjectSetupStatusSerializer,
     SourceFileUploadSerializer,
     SourceFileResponseSerializer,
     LessonSerializer,
     LessonSourceSerializer,
 )
 from .utils import compute_file_hash, build_file_url
+from .tasks import setup_project_ai
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -28,7 +32,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return (
             Project.objects
-            .filter(owner=self.request.user)
+            .filter(Q(owner=self.request.user) | Q(is_default=True))
             .annotate(lesson_count=Count('lessons'))
             .prefetch_related(
                 Prefetch(
@@ -51,7 +55,67 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        project = serializer.save(owner=self.request.user)
+        project.ai_setup_status = Project.SETUP_PENDING
+        project.ai_setup_feedback = 'AI project setup queued.'
+        project.save(update_fields=['ai_setup_status', 'ai_setup_feedback'])
+        setup_project_ai.delay(str(project.id))
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        project = serializer.instance
+        response_serializer = ProjectCreateResponseSerializer(project, context=self.get_serializer_context())
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_update(self, serializer):
+        if serializer.instance.is_default:
+            raise PermissionDenied('Default projects are read-only.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.is_default:
+            raise PermissionDenied('Default projects are read-only.')
+        instance.delete()
+
+    @action(detail=False, methods=['post'], url_path='sync-ai')
+    def sync_ai(self, request):
+        if request.user.role != 'admin':
+            raise PermissionDenied('Only admins can sync AI projects.')
+
+        projects = request.data.get('projects', [])
+        if not isinstance(projects, list) or not projects:
+            return Response({'detail': 'projects must be a non-empty list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        imported = []
+        for project_data in projects:
+            project_id = project_data.get('id') or project_data.get('project_id')
+            if not project_id:
+                return Response({'detail': 'Each project requires an id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            project, _ = Project.objects.update_or_create(
+                id=project_id,
+                defaults={
+                    'name': project_data.get('name', str(project_id)),
+                    'description': project_data.get('description', ''),
+                    'is_default': project_data.get('is_default', True),
+                    'owner': request.user,
+                    'ai_setup_status': Project.SETUP_COMPLETED,
+                    'ai_setup_feedback': 'Imported from the AI service.',
+                },
+            )
+            imported.append(str(project.id))
+
+        return Response({'imported': imported}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='setup-status')
+    def setup_status(self, request, pk=None):
+        project = self.get_object()
+        serializer = ProjectSetupStatusSerializer(project)
+        return Response(serializer.data)
 
 
 class SourceFileViewSet(
@@ -125,7 +189,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Lesson.objects.filter(project__owner=self.request.user)
+        return Lesson.objects.filter(Q(project__owner=self.request.user) | Q(project__is_default=True))
 
 
 class LessonSourceViewSet(viewsets.ModelViewSet):
@@ -138,4 +202,6 @@ class LessonSourceViewSet(viewsets.ModelViewSet):
         return context
 
     def get_queryset(self):
-        return LessonSource.objects.filter(lesson__project__owner=self.request.user)
+        return LessonSource.objects.filter(
+            Q(lesson__project__owner=self.request.user) | Q(lesson__project__is_default=True)
+        )
