@@ -14,20 +14,28 @@ def _setup_lesson_scope(client, lesson):
     lesson_scope_id = str(lesson.id)
     uploaded_sources = 0
 
+    logger.info('create_project start for lesson %s', lesson_scope_id)
     client.create_project(lesson_scope_id)
+    logger.info('create_project done for lesson %s', lesson_scope_id)
 
     for lesson_source in lesson.sources.select_related('source_file').all():
         source_file = lesson_source.source_file
         text = extract_source_file_text(source_file, lesson_source.start_page, lesson_source.end_page)
         if not text.strip():
             continue
-
         filename = f'{lesson.title}-{source_file.file_name or source_file.id}.txt'
+        logger.info('upload_text start for %s', filename)
         client.upload_text(lesson_scope_id, filename, text)
+        logger.info('upload_text done for %s', filename)
         uploaded_sources += 1
 
+    logger.info('process_project start for lesson %s', lesson_scope_id)
     client.process_project(lesson_scope_id, do_reset=True)
+    logger.info('index_push start for lesson %s', lesson_scope_id)
+    client.index_push(lesson_scope_id, do_reset=True)
+    logger.info('extract_main_ideas start for lesson %s', lesson_scope_id)
     client.extract_main_ideas(lesson_scope_id, do_reset=True)
+    logger.info('associate_chunks start for lesson %s', lesson_scope_id)
     client.associate_chunks(lesson_scope_id, do_reset=True)
 
     return uploaded_sources

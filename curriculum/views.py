@@ -1,3 +1,5 @@
+import logging
+
 from django.db.models import Count, Prefetch, Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets, permissions, status
@@ -19,6 +21,9 @@ from .serializers import (
 )
 from .utils import compute_file_hash, build_file_url
 from .tasks import setup_project_ai
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -59,7 +64,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project.ai_setup_status = Project.SETUP_PENDING
         project.ai_setup_feedback = 'AI project setup queued.'
         project.save(update_fields=['ai_setup_status', 'ai_setup_feedback'])
-        setup_project_ai.delay(str(project.id))
+        try:
+            setup_project_ai.delay(str(project.id))
+        except Exception:
+            logger.exception(
+                'Celery is unavailable; running AI setup synchronously for project %s',
+                project.id,
+            )
+            setup_project_ai.apply(args=[str(project.id)])
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

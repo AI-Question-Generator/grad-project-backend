@@ -16,14 +16,14 @@ class AIServiceClient:
     def _url(self, path):
         return f'{self.base_url}{path}'
 
-    def _request(self, method, path, *, params=None, json=None, files=None):
+    def _request(self, method, path, *, params=None, json=None, files=None, timeout=None):
         response = self.session.request(
             method,
             self._url(path),
             params=params,
             json=json,
             files=files,
-            timeout=self.timeout,
+            timeout=timeout if timeout is not None else self.timeout,
         )
         response.raise_for_status()
         if response.headers.get('content-type', '').startswith('application/json'):
@@ -56,11 +56,22 @@ class AIServiceClient:
             },
         )
 
+    def index_push(self, project_id, do_reset=True):
+        return self._request(
+            'POST',
+            f'/api/v1/nlp/index/push/{project_id}',
+            json={'do_reset': 1 if do_reset else 0},
+    )
+
     def extract_main_ideas(self, project_id, section_size=2000, limit=None, do_reset=True):
         payload = {'section_size': section_size, 'do_reset': 1 if do_reset else 0}
         if limit is not None:
             payload['limit'] = limit
-        return self._request('POST', f'/api/v1/savaal/extract/{project_id}', json=payload)
+        return self._request(
+            'POST',
+            f'/api/v1/savaal/extract/{project_id}',
+            json=payload,
+            timeout=500)
 
     def associate_chunks(self, project_id, top_k=None, do_reset=True):
         payload = {'do_reset': 1 if do_reset else 0}
