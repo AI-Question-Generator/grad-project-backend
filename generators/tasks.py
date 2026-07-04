@@ -136,7 +136,7 @@ def process_generation_request(self, request_id):
             req.save(update_fields=['status', 'error_log', 'completed_at'])
             return
 
-        client = AIServiceClient()
+        client = AIServiceClient(allow_mock=False)
         ai_response = client.safe_generate_questions(payload['tasks'])
         had_failures = process_ai_response(req, ai_response)
 
