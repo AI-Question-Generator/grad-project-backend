@@ -1,0 +1,684 @@
+{
+    "projects": [
+        {
+            "id": "155911bc-45f3-44b0-863a-23304a6ce207",
+            "name": "English Curriculum",
+            "description": "Default English Curriculum made by Soual",
+            "is_default": true,
+            "lessons": [
+                {
+                    "id": "fbec5ffc-61e7-40ba-8c4c-c12ba4514fa7",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "1",
+                    "order": 0
+                },
+                {
+                    "id": "f8492b11-a289-4d07-a7d6-0ad6969d7c8c",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "1",
+                    "order": 1
+                },
+                {
+                    "id": "8deb11ff-74af-418f-b45f-cc7f93c98597",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "1",
+                    "order": 2
+                },
+                {
+                    "id": "bad1daf2-9666-44ca-9a38-dfd3e9bd4f02",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "1",
+                    "order": 3
+                },
+                {
+                    "id": "1c1ee47b-0ebb-4218-8ad2-80cc7e83746e",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "2",
+                    "order": 0
+                },
+                {
+                    "id": "a83cd1d6-a6b9-46f8-a139-891b7f298137",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "2",
+                    "order": 1
+                },
+                {
+                    "id": "c582ca92-7fdb-4f9f-8a8c-9e331f074a62",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "2",
+                    "order": 2
+                },
+                {
+                    "id": "106dde40-212f-491b-b27f-84325009def8",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "2",
+                    "order": 3
+                },
+                {
+                    "id": "15328480-02a8-47c6-8348-d64aceb13a03",
+                    "title": "Past Simple",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "34a6e36a-4884-4dd5-af23-520878cfa76a",
+                    "title": "Past Continuous",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "b0faf22e-c14e-4903-860a-78cdd5b7b5d4",
+                    "title": "Present Perfect",
+                    "description": "",
+                    "unit_number": 1,
+                    "section": "grammar",
+                    "order": 2
+                },
+                {
+                    "id": "6190cd64-d1c3-4182-a387-dabec22fdf5f",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "1",
+                    "order": 0
+                },
+                {
+                    "id": "108a9437-3284-4846-8a8d-b8d4c6e16867",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "1",
+                    "order": 1
+                },
+                {
+                    "id": "ba7a7b70-36d6-4482-9b70-5f48338357f4",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "1",
+                    "order": 2
+                },
+                {
+                    "id": "0527a692-264d-41bd-898a-c54f29a46b55",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "1",
+                    "order": 3
+                },
+                {
+                    "id": "6fe4a6a7-ae9a-41f7-8f05-f117d957b897",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "2",
+                    "order": 0
+                },
+                {
+                    "id": "69c27882-356a-45e0-aeaa-47eb1371c10c",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "2",
+                    "order": 1
+                },
+                {
+                    "id": "a1e149ca-efc7-482a-b0a6-20d3bd0c3677",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "2",
+                    "order": 2
+                },
+                {
+                    "id": "04fa5d49-79c8-4812-9996-845ebb62e56d",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "2",
+                    "order": 3
+                },
+                {
+                    "id": "475743ad-dc1f-4f03-90c8-41a2301507a6",
+                    "title": "Past Perfect",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "a5194418-f73d-4f4e-b1d2-04ca85bb337d",
+                    "title": "Past Perfect Continuous",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "41a4a097-4088-4484-a686-20c77f2a7fd7",
+                    "title": "Adjectives (comparatives \u2013 superlatives)",
+                    "description": "",
+                    "unit_number": 2,
+                    "section": "grammar",
+                    "order": 2
+                },
+                {
+                    "id": "36705207-5ba8-47a7-bdad-34ff04b1b2ba",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "1",
+                    "order": 0
+                },
+                {
+                    "id": "94f6156f-cfba-4c9f-ab37-f3385d5f4e96",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "1",
+                    "order": 1
+                },
+                {
+                    "id": "b56db7ab-de5d-4fd2-84b7-030b04282c88",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "1",
+                    "order": 2
+                },
+                {
+                    "id": "0015c3b0-cd28-4c6a-b6f5-f2dd4e31b0b5",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "1",
+                    "order": 3
+                },
+                {
+                    "id": "a4ca0531-c315-4777-a3f8-1ceb6e954249",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "2",
+                    "order": 0
+                },
+                {
+                    "id": "77f2635f-0d77-490e-9f91-14e8b9cfae53",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "2",
+                    "order": 1
+                },
+                {
+                    "id": "ab736268-58c7-42be-8674-8d98016467a8",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "2",
+                    "order": 2
+                },
+                {
+                    "id": "9c410060-20a4-441d-923e-ac270ef3f940",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "2",
+                    "order": 3
+                },
+                {
+                    "id": "c925f97d-c2ae-4baf-8998-8b2f4960f36a",
+                    "title": "Future Simple (will + inf.)",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "9fc2943f-849b-497a-a3fb-91aec63957ca",
+                    "title": "Future (be going to + inf.)",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "069ed584-f129-4983-a1aa-b75603a55009",
+                    "title": "Future (shall)",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 2
+                },
+                {
+                    "id": "9f9c397b-3150-476c-9d81-8bf1e0eb24ad",
+                    "title": "Future (Present Simple)",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 3
+                },
+                {
+                    "id": "adedd042-7320-4bc8-abee-7ec7a8cba849",
+                    "title": "Future (Present Continuous)",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 4
+                },
+                {
+                    "id": "73de728c-9fc0-4753-b58a-eccdc8445c1a",
+                    "title": "Future Simple after time conjunctions",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 5
+                },
+                {
+                    "id": "7b1394dd-2f2b-4450-be38-c25321d2a8e0",
+                    "title": "Future Continuous",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 6
+                },
+                {
+                    "id": "2a579bd9-9d09-4968-96e3-a1ec85f22e80",
+                    "title": "The Present Perfect for the future",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 7
+                },
+                {
+                    "id": "7823687e-31bf-432e-92c0-aaf8e856a88a",
+                    "title": "Making suggestions for the future",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 8
+                },
+                {
+                    "id": "3e3fefad-b21b-4dae-b097-aab8adbd8e18",
+                    "title": "The Future Perfect",
+                    "description": "",
+                    "unit_number": 3,
+                    "section": "grammar",
+                    "order": 9
+                },
+                {
+                    "id": "c17fc990-4a52-414f-bda7-288de9bac16f",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "1",
+                    "order": 0
+                },
+                {
+                    "id": "0a8ee44d-83ad-44ac-b428-97486ddbae3e",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "1",
+                    "order": 1
+                },
+                {
+                    "id": "ab7cb556-ebb8-4a8f-8bc4-bba1f0e0c046",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "1",
+                    "order": 2
+                },
+                {
+                    "id": "9fb3ad0c-4ec1-49ae-b95a-1ab7cfcfd88b",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "1",
+                    "order": 3
+                },
+                {
+                    "id": "a3639c27-fa10-4675-8674-b26e0cd0905c",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "2",
+                    "order": 0
+                },
+                {
+                    "id": "b8f57b08-04f3-48c7-8c41-a74a8a9b314e",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "2",
+                    "order": 1
+                },
+                {
+                    "id": "dad16b16-5e8d-48bf-bfa9-cb502f7ebcb4",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "2",
+                    "order": 2
+                },
+                {
+                    "id": "d38f11e4-c7c7-4203-9d29-aa0863fead63",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "2",
+                    "order": 3
+                },
+                {
+                    "id": "0f5cdeec-86d3-45b6-86a9-bed21e1bbdc5",
+                    "title": "Modal verbs",
+                    "description": "",
+                    "unit_number": 4,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "5cfa0a3d-ee39-423a-b7f8-e48c23a3265a",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "1",
+                    "order": 0
+                },
+                {
+                    "id": "f65f8693-7137-48d6-91ba-e59ee7934e4c",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "1",
+                    "order": 1
+                },
+                {
+                    "id": "fd951433-c2df-4094-98f7-2e260588aeb2",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "1",
+                    "order": 2
+                },
+                {
+                    "id": "f3b10b3c-462f-4f2b-a24c-283f99852808",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "1",
+                    "order": 3
+                },
+                {
+                    "id": "f6dbc38f-227e-4db3-9a29-bd4eef1f006c",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "2",
+                    "order": 0
+                },
+                {
+                    "id": "ab53c112-3681-42a2-b493-3bad7e456a3b",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "2",
+                    "order": 1
+                },
+                {
+                    "id": "401d6fc9-d65a-4cab-b342-f12a4debf01a",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "2",
+                    "order": 2
+                },
+                {
+                    "id": "9f122673-5476-4688-80f1-a3489bd908e6",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "2",
+                    "order": 3
+                },
+                {
+                    "id": "28150dd1-88d8-414a-80b2-ad9c2c9e6c57",
+                    "title": "Phrasal verbs",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "685c3837-d6ff-4955-a22d-2618a40e4658",
+                    "title": "The -ing form or the infinitive",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "633259db-cda8-416d-8931-33debf08672c",
+                    "title": "The \u201cto + infinitive\u201d",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "grammar",
+                    "order": 2
+                },
+                {
+                    "id": "b805d349-2501-4f31-b34e-ed2721bbf005",
+                    "title": "Verbs + to + inf. Or (v. ing)",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "grammar",
+                    "order": 3
+                },
+                {
+                    "id": "8e0df400-cadd-418f-ae06-13c6e19bb7b8",
+                    "title": "The infinitive without to",
+                    "description": "",
+                    "unit_number": 5,
+                    "section": "grammar",
+                    "order": 4
+                },
+                {
+                    "id": "93d464df-89a3-4419-9d11-df28c254ef3e",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "1",
+                    "order": 0
+                },
+                {
+                    "id": "e27a19bf-0274-49d8-8df7-e5e3c2160c54",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "1",
+                    "order": 1
+                },
+                {
+                    "id": "a3fb8914-651d-432d-b490-5b0277b3ec14",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "1",
+                    "order": 2
+                },
+                {
+                    "id": "0dc8b4ab-ab3f-46cd-8c0a-3a1794801a81",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "1",
+                    "order": 3
+                },
+                {
+                    "id": "80a110f0-7617-4d6a-8244-fade5175f377",
+                    "title": "Vocabulary",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "2",
+                    "order": 0
+                },
+                {
+                    "id": "97263582-d439-45fd-a517-f83fc3a42afc",
+                    "title": "Definitions, Derivatives, and Verbal Collocations",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "2",
+                    "order": 1
+                },
+                {
+                    "id": "4440caf5-6131-4124-be44-46ea602ca32e",
+                    "title": "Synonyms & Antonyms",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "2",
+                    "order": 2
+                },
+                {
+                    "id": "0a2972c0-06eb-44db-9f17-14ae16bd397b",
+                    "title": "Expressions, idioms and prepositions",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "2",
+                    "order": 3
+                },
+                {
+                    "id": "f4e8bd19-15e1-4ec6-89a0-8146823a6a39",
+                    "title": "Causative verbs",
+                    "description": "",
+                    "unit_number": 6,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "ba247f3c-ac80-412e-b6c0-f6f539605176",
+                    "title": "The Present Perfect Tense",
+                    "description": "",
+                    "unit_number": 7,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "cd7d07bd-f5bb-4a02-a98c-0dcff918878c",
+                    "title": "since \u2013 for \u2013 ago",
+                    "description": "",
+                    "unit_number": 7,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "a4e485ca-2f6b-462c-bf66-ada34e000179",
+                    "title": "The Present Perfect Continuous Tense",
+                    "description": "",
+                    "unit_number": 7,
+                    "section": "grammar",
+                    "order": 2
+                },
+                {
+                    "id": "89d593d0-3f94-4621-969a-275df012d664",
+                    "title": "Adjectives and Adverbs",
+                    "description": "",
+                    "unit_number": 7,
+                    "section": "grammar",
+                    "order": 3
+                },
+                {
+                    "id": "2b84bf99-db2a-4c76-aa4b-fcce8cde7bc7",
+                    "title": "Active and Passive",
+                    "description": "",
+                    "unit_number": 8,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "e4a81673-7868-451e-86ae-2233e36c7ca1",
+                    "title": "Quantifiers",
+                    "description": "",
+                    "unit_number": 9,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "06629f34-0c78-484a-97de-4f3f05b58b59",
+                    "title": "Deduction",
+                    "description": "",
+                    "unit_number": 10,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "3f80f1b4-2d15-4bed-9745-707421aa2925",
+                    "title": "Relative clauses",
+                    "description": "",
+                    "unit_number": 11,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "7a6de64f-b7aa-4d64-a3a2-a10ed062ed45",
+                    "title": "Compound adjectives",
+                    "description": "",
+                    "unit_number": 11,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "c90cd2c2-d13b-4bd1-9040-5b727e607327",
+                    "title": "Reported statements",
+                    "description": "",
+                    "unit_number": 12,
+                    "section": "grammar",
+                    "order": 0
+                },
+                {
+                    "id": "422fb3c5-32ff-4881-85cd-740409f30160",
+                    "title": "Reported Questions",
+                    "description": "",
+                    "unit_number": 12,
+                    "section": "grammar",
+                    "order": 1
+                },
+                {
+                    "id": "6fbd0835-1dd6-4194-8607-425a8b626bc5",
+                    "title": "Reported imperatives, suggestions and advice",
+                    "description": "",
+                    "unit_number": 12,
+                    "section": "grammar",
+                    "order": 2
+                },
+                {
+                    "id": "d48d36af-8a7e-4cf8-b8e2-6a6a643099ec",
+                    "title": "So - Such",
+                    "description": "",
+                    "unit_number": 12,
+                    "section": "grammar",
+                    "order": 3
+                }
+            ]
+        }
+    ]
+}

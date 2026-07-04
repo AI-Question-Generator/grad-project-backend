@@ -70,7 +70,13 @@ class Lesson(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    unit_number = models.PositiveIntegerField(null=True, blank=True)
+    section = models.CharField(max_length=20, blank=True, default='')
+    order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['unit_number', 'section', 'order']
 
     def __str__(self):
         return self.title

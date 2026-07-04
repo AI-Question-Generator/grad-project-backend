@@ -32,7 +32,7 @@ class LessonWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ['title', 'description', 'sources']
+        fields = ['title', 'description', 'unit_number', 'section', 'order', 'sources']
 
 
 class ProjectWriteSerializer(serializers.ModelSerializer):
@@ -189,13 +189,26 @@ class LessonSourceSummarySerializer(serializers.ModelSerializer):
 
 class LessonSummarySerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='title', read_only=True)
+    unitNumber = serializers.IntegerField(source='unit_number', read_only=True)
     sourceCount = serializers.IntegerField(source='source_count', read_only=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     sources = LessonSourceSummarySerializer(many=True, read_only=True)
+    section = serializers.CharField(read_only=True)
+    order = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Lesson
-        fields = ['id', 'name', 'description', 'sourceCount', 'createdAt', 'sources']
+        fields = [
+            'id',
+            'name',
+            'description',
+            'unitNumber',
+            'section',
+            'order',
+            'sourceCount',
+            'createdAt',
+            'sources',
+        ]
 
 
 class ProjectResponseSerializer(serializers.ModelSerializer):

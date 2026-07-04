@@ -122,7 +122,17 @@ class ProjectListNestedLessonsTest(CurriculumAPITestMixin, TestCase):
         p1 = next(p for p in projects if p['id'] == str(self.project1.id))
         self.assertEqual(len(p1['lessons']), 2)
 
-        expected_lesson_fields = {'id', 'name', 'description', 'sourceCount', 'createdAt', 'sources'}
+        expected_lesson_fields = {
+            'id',
+            'name',
+            'description',
+            'unitNumber',
+            'section',
+            'order',
+            'sourceCount',
+            'createdAt',
+            'sources',
+        }
         for lesson in p1['lessons']:
             self.assertEqual(set(lesson.keys()), expected_lesson_fields)
 
@@ -176,6 +186,9 @@ class NestedProjectCreateTest(CurriculumAPITestMixin, TestCase):
                 {
                     'title': 'Cells',
                     'description': 'Intro to cells',
+                    'unit_number': 1,
+                    'section': 'grammar',
+                    'order': 2,
                     'sources': [
                         {
                             'source_file': str(self.source1.id),
@@ -193,9 +206,69 @@ class NestedProjectCreateTest(CurriculumAPITestMixin, TestCase):
         self.assertEqual(response.data['setup']['setupStatus'], 'PENDING')
         project = Project.objects.get(name='Biology 301')
         self.assertEqual(project.lessons.count(), 1)
-        self.assertEqual(project.lessons.first().sources.count(), 1)
-        self.assertEqual(project.lessons.first().sources.first().start_page, 1)
+        lesson = project.lessons.first()
+        self.assertEqual(lesson.unit_number, 1)
+        self.assertEqual(lesson.section, 'grammar')
+        self.assertEqual(lesson.order, 2)
+        self.assertEqual(lesson.sources.count(), 1)
+        self.assertEqual(lesson.sources.first().start_page, 1)
         mock_delay.assert_called_once()
+
+
+class SyncAiLessonsTest(CurriculumAPITestMixin, TestCase):
+    def test_sync_ai_imports_lessons_with_grouping_fields(self):
+        admin = User.objects.create_user(username='admin', password='testpass123', role='admin')
+        self.client.force_authenticate(user=admin)
+
+        project_id = '8c03012d-e439-45f3-afb5-112f5ff89dd6'
+        first_lesson_id = 'fbec5ffc-61e7-40ba-8c4c-c12ba4514fa7'
+        second_lesson_id = '15328480-02a8-47c6-8348-d64aceb13a03'
+        payload = {
+            'projects': [
+                {
+                    'id': project_id,
+                    'name': 'English Curriculum',
+                    'lessons': [
+                        {
+                            'id': first_lesson_id,
+                            'title': 'Vocabulary',
+                            'unit_number': 1,
+                            'section': '1',
+                            'order': 0,
+                        },
+                        {
+                            'id': second_lesson_id,
+                            'title': 'Past Simple',
+                            'unit_number': 1,
+                            'section': 'grammar',
+                            'order': 0,
+                        },
+                    ],
+                },
+            ],
+        }
+
+        response = self.client.post('/api/curriculum/projects/sync-ai/', payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['imported'], [project_id])
+
+        project = Project.objects.get(id=project_id)
+        self.assertTrue(project.is_default)
+        self.assertEqual(project.lessons.count(), 2)
+
+        first_lesson = Lesson.objects.get(id=first_lesson_id)
+        self.assertEqual(first_lesson.project, project)
+        self.assertEqual(first_lesson.title, 'Vocabulary')
+        self.assertEqual(first_lesson.unit_number, 1)
+        self.assertEqual(first_lesson.section, '1')
+        self.assertEqual(first_lesson.order, 0)
+
+        second_lesson = Lesson.objects.get(id=second_lesson_id)
+        self.assertEqual(second_lesson.title, 'Past Simple')
+        self.assertEqual(second_lesson.unit_number, 1)
+        self.assertEqual(second_lesson.section, 'grammar')
+        self.assertEqual(second_lesson.order, 0)
 
 
 class NestedProjectUpdateReplaceLessonsTest(CurriculumAPITestMixin, TestCase):

@@ -1,5 +1,7 @@
 import logging
+import uuid
 
+from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets, permissions, status
@@ -103,23 +105,64 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'projects must be a non-empty list.'}, status=status.HTTP_400_BAD_REQUEST)
 
         imported = []
-        for project_data in projects:
-            project_id = project_data.get('id') or project_data.get('project_id')
-            if not project_id:
-                return Response({'detail': 'Each project requires an id.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with transaction.atomic():
+                for project_data in projects:
+                    project_id = project_data.get('id') or project_data.get('project_id')
+                    if not project_id:
+                        return Response({'detail': 'Each project requires an id.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            project, _ = Project.objects.update_or_create(
-                id=project_id,
-                defaults={
-                    'name': project_data.get('name', str(project_id)),
-                    'description': project_data.get('description', ''),
-                    'is_default': project_data.get('is_default', True),
-                    'owner': request.user,
-                    'ai_setup_status': Project.SETUP_COMPLETED,
-                    'ai_setup_feedback': 'Imported from the AI service.',
-                },
-            )
-            imported.append(str(project.id))
+                    project, _ = Project.objects.update_or_create(
+                        id=project_id,
+                        defaults={
+                            'name': project_data.get('name', str(project_id)),
+                            'description': project_data.get('description', ''),
+                            'is_default': project_data.get('is_default', True),
+                            'owner': request.user,
+                            'ai_setup_status': Project.SETUP_COMPLETED,
+                            'ai_setup_feedback': 'Imported from the AI service.',
+                        },
+                    )
+
+                    lessons = project_data.get('lessons', [])
+                    if not isinstance(lessons, list):
+                        raise ValueError('lessons must be a list.')
+
+                    for index, lesson_payload in enumerate(lessons):
+                        if not isinstance(lesson_payload, dict):
+                            raise ValueError('Each lesson must be an object.')
+
+                        title = lesson_payload.get('title') or lesson_payload.get('name')
+                        if not title:
+                            raise ValueError('Each lesson requires a title or name.')
+
+                        lesson_id = lesson_payload.get('id') or lesson_payload.get('lesson_id')
+                        lesson_data = {
+                            'title': title,
+                            'description': lesson_payload.get('description', ''),
+                            'unit_number': lesson_payload.get('unit_number', lesson_payload.get('unitNumber')),
+                            'section': lesson_payload.get('section', ''),
+                            'order': lesson_payload.get('order', index),
+                        }
+
+                        if lesson_id:
+                            try:
+                                lesson_id = uuid.UUID(str(lesson_id))
+                            except (TypeError, ValueError) as exc:
+                                raise ValueError('Lesson ids must be valid UUIDs.') from exc
+                            Lesson.objects.update_or_create(
+                                id=lesson_id,
+                                defaults={
+                                    'project': project,
+                                    **lesson_data,
+                                },
+                            )
+                        else:
+                            Lesson.objects.create(project=project, **lesson_data)
+
+                    imported.append(str(project.id))
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'imported': imported}, status=status.HTTP_200_OK)
 
