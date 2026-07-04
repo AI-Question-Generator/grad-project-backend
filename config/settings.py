@@ -135,6 +135,17 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF
+# Set CSRF_TRUSTED_ORIGINS in your environment to allow the admin login form
+# and any session-based POST forms to work on deployed environments.
+# Example: CSRF_TRUSTED_ORIGINS=https://your-app.up.railway.app
+_csrf_extra = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    *[origin.strip() for origin in _csrf_extra.split(',') if origin.strip()],
+]
+
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
