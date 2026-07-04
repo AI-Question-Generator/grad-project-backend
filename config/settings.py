@@ -105,7 +105,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-AI_SERVICE_URL = "http://actual-cricket-stirred.ngrok-free.app"
+AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "http://actual-cricket-stirred.ngrok-free.app")
 
 # Media Files
 MEDIA_URL = '/media/'
