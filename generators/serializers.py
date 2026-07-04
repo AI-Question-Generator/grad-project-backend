@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Q
 
 from curriculum.models import Lesson, Project
 from .models import (
@@ -86,7 +87,9 @@ class GenerationRequestCreateSerializer(serializers.Serializer):
         request = self.context['request']
         user = request.user
 
-        project = Project.objects.filter(id=attrs['project'], owner=user).first()
+        project = Project.objects.filter(
+            Q(id=attrs['project'], owner=user) | Q(id=attrs['project'], is_default=True)
+        ).first()
         # project may be None here - that's fine, we still proceed with
         # the rest of the flow and just store project as null.
 
@@ -99,8 +102,10 @@ class GenerationRequestCreateSerializer(serializers.Serializer):
             lessons_qs = Lesson.objects.filter(id__in=lesson_ids, project=project)
         else:
             # No valid project to scope by - fall back to any lesson the
-            # user owns through one of their own projects.
-            lessons_qs = Lesson.objects.filter(id__in=lesson_ids, project__owner=user)
+            # user can access through one of their own or default projects.
+            lessons_qs = Lesson.objects.filter(
+                Q(id__in=lesson_ids, project__owner=user) | Q(id__in=lesson_ids, project__is_default=True)
+            )
 
         lessons_map = {lesson.id: lesson for lesson in lessons_qs}
         if len(lessons_map) != len(set(lesson_ids)):

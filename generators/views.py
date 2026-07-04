@@ -90,7 +90,7 @@ class GeneratedQuestionViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = GeneratedQuestion.objects.filter(
-            lesson__project__owner=self.request.user
+            generation_request__user=self.request.user
         ).select_related('question_type', 'lesson', 'generation_request')
 
         generation_request_id = self.request.query_params.get('generation_request')
