@@ -21,3 +21,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy project
 COPY . /app/
+
+# Collect static files for WhiteNoise to serve (admin CSS/JS etc.)
+RUN python manage.py collectstatic --noinput
