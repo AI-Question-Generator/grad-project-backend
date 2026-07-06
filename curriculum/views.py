@@ -140,6 +140,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         lesson_data = {
                             'title': title,
                             'description': lesson_payload.get('description', ''),
+                            'domain': lesson_payload.get('domain', Lesson.DOMAIN_GRAMMAR),
                             'unit_number': lesson_payload.get('unit_number', lesson_payload.get('unitNumber')),
                             'section': lesson_payload.get('section', ''),
                             'order': lesson_payload.get('order', index),

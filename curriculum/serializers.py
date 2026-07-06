@@ -32,7 +32,7 @@ class LessonWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ['title', 'description', 'unit_number', 'section', 'order', 'sources']
+        fields = ['title', 'description', 'domain', 'unit_number', 'section', 'order', 'sources']
 
 
 class ProjectWriteSerializer(serializers.ModelSerializer):
@@ -195,6 +195,7 @@ class LessonSummarySerializer(serializers.ModelSerializer):
     sources = LessonSourceSummarySerializer(many=True, read_only=True)
     section = serializers.CharField(read_only=True)
     order = serializers.IntegerField(read_only=True)
+    domain = serializers.CharField(read_only=True)
 
     class Meta:
         model = Lesson
@@ -202,6 +203,7 @@ class LessonSummarySerializer(serializers.ModelSerializer):
             'id',
             'name',
             'description',
+            'domain',
             'unitNumber',
             'section',
             'order',

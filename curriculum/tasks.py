@@ -15,7 +15,7 @@ def _setup_lesson_scope(client, lesson):
     uploaded_sources = 0
 
     logger.info('create_project start for lesson %s', lesson_scope_id)
-    client.create_project(lesson_scope_id)
+    client.create_project(lesson_scope_id, domain=lesson.domain)
     logger.info('create_project done for lesson %s', lesson_scope_id)
 
     for lesson_source in lesson.sources.select_related('source_file').all():
