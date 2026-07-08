@@ -66,19 +66,25 @@ class SourceFile(models.Model):
 
 
 class Lesson(models.Model):
-    DOMAIN_GRAMMAR = 'grammar'
-    DOMAIN_VOCAB = 'vocab'
+    DOMAIN_VOCAB = 'english_vocab'
+    DOMAIN_SYN_ANT = 'english_syn_ant'
+    DOMAIN_DEF_DER_COL = 'english_def_der_col'
+    DOMAIN_EXP_IDI_PREP = 'english_exp_idi_prep'
+    DOMAIN_GRAMMAR = 'english_grammar'
 
     DOMAIN_CHOICES = (
-        (DOMAIN_GRAMMAR, 'Grammar'),
         (DOMAIN_VOCAB, 'Vocabulary'),
+        (DOMAIN_SYN_ANT, 'Synonyms & Antonyms'),
+        (DOMAIN_DEF_DER_COL, 'Definition, Derivatives & Verbal Collocation'),
+        (DOMAIN_EXP_IDI_PREP, 'Expression, Idioms & Prepositions'),
+        (DOMAIN_GRAMMAR, 'Grammar'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    domain = models.CharField(max_length=20, choices=DOMAIN_CHOICES, default=DOMAIN_GRAMMAR)
+    domain = models.CharField(max_length=40, choices=DOMAIN_CHOICES, default=DOMAIN_VOCAB)
     unit_number = models.PositiveIntegerField(null=True, blank=True)
     section = models.CharField(max_length=20, blank=True, default='')
     order = models.IntegerField(default=0)

@@ -93,6 +93,11 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'owner']
 
 
+class DomainChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
 class SourceFileUploadSerializer(serializers.Serializer):
     file = serializers.FileField(use_url=False)
 

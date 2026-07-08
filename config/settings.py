@@ -108,7 +108,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
-AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "http://actual-cricket-stirred.ngrok-free.app")
+AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "https://question-generation-system-production.up.railway.app")
 
 # Media Files
 MEDIA_URL = '/media/'

@@ -20,6 +20,7 @@ from .serializers import (
     SourceFileResponseSerializer,
     LessonSerializer,
     LessonSourceSerializer,
+    DomainChoiceSerializer,
 )
 from .utils import compute_file_hash, build_file_url
 from .tasks import setup_project_ai
@@ -246,6 +247,13 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Lesson.objects.filter(Q(project__owner=self.request.user) | Q(project__is_default=True))
+
+    @extend_schema(responses=DomainChoiceSerializer(many=True))
+    @action(detail=False, methods=['get'])
+    def domains(self, request):
+        """List the available lesson domains for the project-create form."""
+        data = [{'value': value, 'label': label} for value, label in Lesson.DOMAIN_CHOICES]
+        return Response(data)
 
 
 class LessonSourceViewSet(viewsets.ModelViewSet):
