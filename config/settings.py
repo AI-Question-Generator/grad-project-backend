@@ -109,6 +109,14 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "https://question-generation-system-production.up.railway.app")
+# Default timeout (seconds) for lightweight AI service calls.
+AI_SERVICE_TIMEOUT = int(os.environ.get("AI_SERVICE_TIMEOUT", 120))
+# Question generation is the slow call; give each per-lesson request a
+# generous, separately configurable timeout.
+AI_SERVICE_GENERATE_TIMEOUT = int(os.environ.get("AI_SERVICE_GENERATE_TIMEOUT", 600))
+# Max questions generated per AI request. A lesson asking for more than this
+# is split into several bounded requests so no single call times out.
+AI_SERVICE_GENERATE_BATCH_SIZE = int(os.environ.get("AI_SERVICE_GENERATE_BATCH_SIZE", 10))
 
 # Media Files
 MEDIA_URL = '/media/'

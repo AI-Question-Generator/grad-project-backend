@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from curriculum.models import Project, Lesson, SourceFile, LessonSource
 from generators.models import GenerationRequest, GenerationRequestQuestionConfig, GeneratedQuestion, QuestionType
-from generators.tasks import process_generation_request
+from generators.tasks import process_generation_request, build_ai_tasks
 
 User = get_user_model()
 
@@ -97,7 +97,15 @@ class GenerationAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(GenerationRequest.objects.filter(id=generation_request.id).exists())
 
-    def test_process_generation_request_task(self):
+    @patch('generators.tasks.AIServiceClient')
+    def test_process_generation_request_task(self, MockClient):
+        from generators.services import AIServiceClient as RealClient
+
+        real = RealClient(allow_mock=True)
+        MockClient.return_value.safe_generate_questions.side_effect = (
+            lambda tasks, timeout=None: real.mock_generate_questions(tasks)
+        )
+
         generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
         generation_request.lessons.add(self.lesson)
         GenerationRequestQuestionConfig.objects.create(
@@ -112,6 +120,168 @@ class GenerationAPITestCase(APITestCase):
         generation_request.refresh_from_db()
         self.assertEqual(generation_request.status, 'COMPLETED')
         self.assertEqual(generation_request.generated_questions.count(), 1)
+
+    @patch('generators.tasks.AIServiceClient')
+    def test_empty_ai_response_marks_failed_not_completed(self, MockClient):
+        """
+        Regression: an AI response with no usable questions must NOT be
+        reported as COMPLETED with zero questions.
+        """
+        MockClient.return_value.safe_generate_questions.side_effect = (
+            lambda tasks, timeout=None: {'results': []}
+        )
+
+        generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
+        generation_request.lessons.add(self.lesson)
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.tf_type,
+            num_questions=20,
+        )
+
+        process_generation_request(str(generation_request.id))
+
+        generation_request.refresh_from_db()
+        self.assertEqual(generation_request.status, 'FAILED')
+        self.assertEqual(generation_request.generated_questions.count(), 0)
+        self.assertTrue(generation_request.error_log)
+
+    @patch('generators.tasks.AIServiceClient')
+    def test_partial_generation_marks_completed_with_errors(self, MockClient):
+        """A lesson that yields questions and one that yields none -> COMPLETED_WITH_ERRORS."""
+        from generators.services import AIServiceClient as RealClient
+
+        real = RealClient(allow_mock=True)
+
+        def partial_generate(tasks, timeout=None):
+            # Only lesson2 (project_id) gets real questions; lesson yields none.
+            served = [t for t in tasks if t['project_id'] == str(self.lesson2.id)]
+            if served:
+                return real.mock_generate_questions(served)
+            return {'results': []}
+
+        MockClient.return_value.safe_generate_questions.side_effect = partial_generate
+
+        generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
+        generation_request.lessons.add(self.lesson, self.lesson2)
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.mcq_type,
+            num_questions=5,
+        )
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson2,
+            question_type=self.tf_type,
+            num_questions=5,
+        )
+
+        process_generation_request(str(generation_request.id))
+
+        generation_request.refresh_from_db()
+        self.assertEqual(generation_request.status, 'COMPLETED_WITH_ERRORS')
+        self.assertEqual(generation_request.generated_questions.count(), 5)
+        self.assertTrue(generation_request.error_log)
+
+    def test_build_ai_tasks_batches_large_lesson(self):
+        generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
+        generation_request.lessons.add(self.lesson)
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.mcq_type,
+            num_questions=25,
+        )
+
+        payload = build_ai_tasks(generation_request, batch_size=10)
+        tasks = payload['tasks']
+
+        # 25 questions / batch of 10 -> three bounded requests.
+        self.assertEqual(len(tasks), 3)
+        counts = [sum(r['num_questions'] for r in task['requests']) for task in tasks]
+        self.assertEqual(sorted(counts, reverse=True), [10, 10, 5])
+        self.assertTrue(all(c <= 10 for c in counts))
+        self.assertEqual(sum(counts), 25)
+        self.assertTrue(all(task['project_id'] == str(self.lesson.id) for task in tasks))
+
+    def test_build_ai_tasks_packs_multiple_types_into_batch(self):
+        generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
+        generation_request.lessons.add(self.lesson)
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.mcq_type,
+            num_questions=3,
+        )
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.tf_type,
+            num_questions=4,
+        )
+
+        payload = build_ai_tasks(generation_request, batch_size=10)
+
+        # 3 + 4 = 7 <= batch size, so a single request covers both types.
+        self.assertEqual(len(payload['tasks']), 1)
+        self.assertEqual(len(payload['tasks'][0]['requests']), 2)
+
+    @patch('generators.tasks.AIServiceClient')
+    def test_process_generation_request_with_many_questions(self, MockClient):
+        """
+        End-to-end: a large job (80 questions across two lessons) must be
+        split into bounded batches, every batch stays within the batch
+        size, and all questions are persisted.
+        """
+        from generators.services import AIServiceClient as RealClient
+
+        real = RealClient(allow_mock=True)
+        batch_totals = []
+
+        def fake_safe_generate(tasks, timeout=None):
+            # Each call handles exactly one lesson's batch; record how many
+            # questions it was asked to generate so we can assert bounds.
+            total = sum(r['num_questions'] for t in tasks for r in t['requests'])
+            batch_totals.append(total)
+            return real.mock_generate_questions(tasks)
+
+        MockClient.return_value.safe_generate_questions.side_effect = fake_safe_generate
+
+        generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
+        generation_request.lessons.add(self.lesson, self.lesson2)
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson,
+            question_type=self.mcq_type,
+            num_questions=50,
+        )
+        GenerationRequestQuestionConfig.objects.create(
+            generation_request=generation_request,
+            lesson=self.lesson2,
+            question_type=self.tf_type,
+            num_questions=30,
+        )
+
+        process_generation_request(str(generation_request.id))
+
+        generation_request.refresh_from_db()
+        self.assertEqual(generation_request.status, 'COMPLETED')
+
+        # Default batch size is 10: 50 -> 5 calls, 30 -> 3 calls = 8 calls.
+        self.assertEqual(len(batch_totals), 8)
+        self.assertTrue(all(total <= 10 for total in batch_totals))
+        self.assertEqual(sum(batch_totals), 80)
+
+        # Every requested question is generated and stored.
+        self.assertEqual(generation_request.generated_questions.count(), 80)
+        self.assertEqual(
+            generation_request.generated_questions.filter(question_type=self.mcq_type).count(), 50
+        )
+        self.assertEqual(
+            generation_request.generated_questions.filter(question_type=self.tf_type).count(), 30
+        )
 
     def test_fetch_completed_questions_access(self):
         generation_request = GenerationRequest.objects.create(user=self.user, project=self.project)
