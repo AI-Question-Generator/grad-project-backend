@@ -66,6 +66,14 @@ class SourceFile(models.Model):
 
 
 class Lesson(models.Model):
+    LANGUAGE_EN = 'en'
+    LANGUAGE_AR = 'ar'
+
+    LANGUAGE_CHOICES = (
+        (LANGUAGE_EN, 'English'),
+        (LANGUAGE_AR, 'Arabic'),
+    )
+
     DOMAIN_VOCAB = 'english_vocab'
     DOMAIN_SYN_ANT = 'english_syn_ant'
     DOMAIN_DEF_DER_COL = 'english_def_der_col'
@@ -84,7 +92,9 @@ class Lesson(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    domain = models.CharField(max_length=40, choices=DOMAIN_CHOICES, default=DOMAIN_VOCAB)
+    language = models.CharField(max_length=5, choices=LANGUAGE_CHOICES, default=LANGUAGE_EN)
+    # Domain only applies to English lessons; Arabic lessons keep it blank.
+    domain = models.CharField(max_length=40, choices=DOMAIN_CHOICES, blank=True, default=DOMAIN_VOCAB)
     unit_number = models.PositiveIntegerField(null=True, blank=True)
     section = models.CharField(max_length=20, blank=True, default='')
     order = models.IntegerField(default=0)

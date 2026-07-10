@@ -138,10 +138,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
                             raise ValueError('Each lesson requires a title or name.')
 
                         lesson_id = lesson_payload.get('id') or lesson_payload.get('lesson_id')
+                        language = lesson_payload.get('language', Lesson.LANGUAGE_EN)
+                        # Arabic lessons carry no domain.
+                        if language == Lesson.LANGUAGE_AR:
+                            domain = ''
+                        else:
+                            domain = lesson_payload.get('domain', Lesson.DOMAIN_GRAMMAR)
                         lesson_data = {
                             'title': title,
                             'description': lesson_payload.get('description', ''),
-                            'domain': lesson_payload.get('domain', Lesson.DOMAIN_GRAMMAR),
+                            'language': language,
+                            'domain': domain,
                             'unit_number': lesson_payload.get('unit_number', lesson_payload.get('unitNumber')),
                             'section': lesson_payload.get('section', ''),
                             'order': lesson_payload.get('order', index),

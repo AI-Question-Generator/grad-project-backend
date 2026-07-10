@@ -29,10 +29,25 @@ class LessonSourceWriteSerializer(serializers.ModelSerializer):
 
 class LessonWriteSerializer(serializers.ModelSerializer):
     sources = LessonSourceWriteSerializer(many=True, required=False, default=list)
+    # Domain is optional on input; the backend derives it from `language`.
+    domain = serializers.ChoiceField(
+        choices=Lesson.DOMAIN_CHOICES, required=False, allow_blank=True
+    )
 
     class Meta:
         model = Lesson
-        fields = ['title', 'description', 'domain', 'unit_number', 'section', 'order', 'sources']
+        fields = ['title', 'description', 'language', 'domain', 'unit_number', 'section', 'order', 'sources']
+
+    def validate(self, attrs):
+        language = attrs.get('language', Lesson.LANGUAGE_EN)
+        if language == Lesson.LANGUAGE_AR:
+            # Arabic lessons carry no domain.
+            attrs['domain'] = ''
+        else:
+            # English lessons must have a domain; default to vocabulary.
+            if not attrs.get('domain'):
+                attrs['domain'] = Lesson.DOMAIN_VOCAB
+        return attrs
 
 
 class ProjectWriteSerializer(serializers.ModelSerializer):
@@ -200,6 +215,7 @@ class LessonSummarySerializer(serializers.ModelSerializer):
     sources = LessonSourceSummarySerializer(many=True, read_only=True)
     section = serializers.CharField(read_only=True)
     order = serializers.IntegerField(read_only=True)
+    language = serializers.CharField(read_only=True)
     domain = serializers.CharField(read_only=True)
 
     class Meta:
@@ -208,6 +224,7 @@ class LessonSummarySerializer(serializers.ModelSerializer):
             'id',
             'name',
             'description',
+            'language',
             'domain',
             'unitNumber',
             'section',

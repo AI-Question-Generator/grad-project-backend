@@ -15,7 +15,8 @@ def _setup_lesson_scope(client, lesson):
     uploaded_sources = 0
 
     logger.info('create_project start for lesson %s', lesson_scope_id)
-    client.create_project(lesson_scope_id, domain=lesson.domain)
+    # Arabic lessons have no domain; English lessons pass their selected domain.
+    client.create_project(lesson_scope_id, language=lesson.language, domain=lesson.domain or '')
     logger.info('create_project done for lesson %s', lesson_scope_id)
 
     for lesson_source in lesson.sources.select_related('source_file').all():
