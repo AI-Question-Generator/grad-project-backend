@@ -28,6 +28,21 @@ from .tasks import setup_project_ai
 logger = logging.getLogger(__name__)
 
 
+def trigger_ai_setup(project):
+    project.ai_setup_status = Project.SETUP_PENDING
+    project.ai_setup_feedback = 'AI project setup queued.'
+    project.save(update_fields=['ai_setup_status', 'ai_setup_feedback'])
+    try:
+        setup_project_ai.delay(str(project.id))
+    except Exception:
+        logger.exception(
+            'Celery is unavailable; running AI setup synchronously for project %s',
+            project.id,
+        )
+        setup_project_ai.apply(args=[str(project.id)])
+
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -63,17 +78,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         project = serializer.save(owner=self.request.user)
-        project.ai_setup_status = Project.SETUP_PENDING
-        project.ai_setup_feedback = 'AI project setup queued.'
-        project.save(update_fields=['ai_setup_status', 'ai_setup_feedback'])
-        try:
-            setup_project_ai.delay(str(project.id))
-        except Exception:
-            logger.exception(
-                'Celery is unavailable; running AI setup synchronously for project %s',
-                project.id,
-            )
-            setup_project_ai.apply(args=[str(project.id)])
+        trigger_ai_setup(project)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -88,12 +93,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         if serializer.instance.is_default:
             raise PermissionDenied('Default projects are read-only.')
-        serializer.save()
+        project = serializer.save()
+        trigger_ai_setup(project)
 
     def perform_destroy(self, instance):
         if instance.is_default:
             raise PermissionDenied('Default projects are read-only.')
         instance.delete()
+
 
     @action(detail=False, methods=['post'], url_path='sync-ai')
     def sync_ai(self, request):
@@ -246,6 +253,19 @@ class LessonViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Lesson.objects.filter(Q(project__owner=self.request.user) | Q(project__is_default=True))
 
+    def perform_create(self, serializer):
+        lesson = serializer.save()
+        trigger_ai_setup(lesson.project)
+
+    def perform_update(self, serializer):
+        lesson = serializer.save()
+        trigger_ai_setup(lesson.project)
+
+    def perform_destroy(self, instance):
+        project = instance.project
+        instance.delete()
+        trigger_ai_setup(project)
+
 
 class LessonSourceViewSet(viewsets.ModelViewSet):
     serializer_class = LessonSourceSerializer
@@ -260,3 +280,17 @@ class LessonSourceViewSet(viewsets.ModelViewSet):
         return LessonSource.objects.filter(
             Q(lesson__project__owner=self.request.user) | Q(lesson__project__is_default=True)
         )
+
+    def perform_create(self, serializer):
+        lesson_source = serializer.save()
+        trigger_ai_setup(lesson_source.lesson.project)
+
+    def perform_update(self, serializer):
+        lesson_source = serializer.save()
+        trigger_ai_setup(lesson_source.lesson.project)
+
+    def perform_destroy(self, instance):
+        project = instance.lesson.project
+        instance.delete()
+        trigger_ai_setup(project)
+
