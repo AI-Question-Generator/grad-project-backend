@@ -3,6 +3,7 @@ import logging
 
 import requests
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from .models import GenerationRequest, GeneratedQuestion, QuestionType
@@ -13,7 +14,40 @@ logger = logging.getLogger(__name__)
 AI_SUCCESS_SIGNAL = 'Question generation completed successfully'
 
 
-def build_ai_tasks(req):
+def _batch_lesson_requests(lesson_configs, batch_size):
+    """
+    Split a lesson's question configs into batches so that no single AI
+    request asks for more than ``batch_size`` questions in total.
+
+    Returns a list of request-lists; each request-list becomes the
+    ``requests`` payload of one bounded AI call. A config asking for more
+    than ``batch_size`` questions is spread across several requests.
+    """
+    batches = []
+    current = []
+    current_total = 0
+    for config in lesson_configs:
+        code = config.question_type.code
+        remaining = config.num_questions
+        while remaining > 0:
+            if current_total >= batch_size:
+                batches.append(current)
+                current = []
+                current_total = 0
+            take = min(remaining, batch_size - current_total)
+            current.append({"num_questions": take, "question_type": code})
+            current_total += take
+            remaining -= take
+    if current:
+        batches.append(current)
+    return batches
+
+
+def build_ai_tasks(req, batch_size=None):
+    if batch_size is None:
+        batch_size = getattr(settings, 'AI_SERVICE_GENERATE_BATCH_SIZE', 10)
+    batch_size = max(1, batch_size)
+
     tasks = []
     configs_by_lesson = {}
     for config in req.question_configs.select_related('lesson', 'question_type').all():
@@ -23,16 +57,11 @@ def build_ai_tasks(req):
         lesson_configs = configs_by_lesson.get(lesson.id, [])
         if not lesson_configs:
             continue
-        tasks.append({
-            "project_id": str(lesson.id),
-            "requests": [
-                {
-                    "num_questions": config.num_questions,
-                    "question_type": config.question_type.code,
-                }
-                for config in lesson_configs
-            ],
-        })
+        for requests_batch in _batch_lesson_requests(lesson_configs, batch_size):
+            tasks.append({
+                "project_id": str(lesson.id),
+                "requests": requests_batch,
+            })
 
     return {"tasks": tasks}
 
@@ -46,14 +75,16 @@ def process_ai_response(req, ai_response):
     some may have failed, so we iterate all of them rather than assuming
     one entry per type.
 
-    Returns True if at least one (lesson, question_type) entry failed or
-    produced zero questions, so the caller can mark the request as
-    'COMPLETED_WITH_ERRORS' instead of 'COMPLETED'.
+    Returns a ``(had_failures, created_count)`` tuple: ``had_failures`` is
+    True if at least one (lesson, question_type) entry failed or produced
+    zero questions, and ``created_count`` is how many GeneratedQuestion rows
+    were created, so the caller can judge fulfillment.
     """
     lessons_by_id = {str(lesson.id): lesson for lesson in req.lessons.all()}
     types_by_code = {qtype.code: qtype for qtype in QuestionType.objects.filter(is_active=True)}
 
     had_failures = False
+    created_count = 0
 
     results = ai_response.get('results')
     if results is None and 'content' in ai_response:
@@ -74,6 +105,16 @@ def process_ai_response(req, ai_response):
                     ],
                 }
             )
+
+    if not results:
+        # Neither 'results' nor 'content' carried anything usable. Surface
+        # the raw shape so we can tell an empty AI answer apart from a
+        # response format we don't yet parse.
+        logger.warning(
+            "AI response contained no usable results (keys=%s): %r",
+            list(ai_response.keys()), ai_response,
+        )
+        return True, 0
 
     for project_result in results or []:
         ai_project_id = project_result.get('project_id')
@@ -110,8 +151,9 @@ def process_ai_response(req, ai_response):
                     explanation=q.get('explanation', ''),
                     chunk_hash=q.get('chunk_hash') or str(uuid.uuid4()),
                 )
+                created_count += 1
 
-    return had_failures
+    return had_failures, created_count
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -137,10 +179,66 @@ def process_generation_request(self, request_id):
             return
 
         client = AIServiceClient(allow_mock=False)
-        ai_response = client.safe_generate_questions(payload['tasks'])
-        had_failures = process_ai_response(req, ai_response)
 
-        req.status = 'COMPLETED_WITH_ERRORS' if had_failures else 'COMPLETED'
+        # Generate one lesson (task) at a time rather than sending the whole
+        # batch in a single blocking call. Each request stays bounded, its
+        # results are saved as soon as they arrive, and a slow or failing
+        # lesson no longer discards the rest of the batch.
+        had_failures = False
+        total_created = 0
+        for task in payload['tasks']:
+            try:
+                ai_response = client.safe_generate_questions([task])
+            except Exception:
+                logger.exception(
+                    "AI generation failed for request %s, project_id=%s",
+                    request_id, task.get('project_id'),
+                )
+                had_failures = True
+                continue
+            batch_failed, created = process_ai_response(req, ai_response)
+            if batch_failed:
+                had_failures = True
+            if created == 0:
+                logger.warning(
+                    "AI batch for request %s, project_id=%s produced no questions",
+                    request_id, task.get('project_id'),
+                )
+            total_created += created
+
+        # Decide status from what was actually generated, not just whether a
+        # parse error was flagged: an empty/unrecognised AI response can slip
+        # through with no explicit failure yet zero questions.
+        requested_configs = set(req.question_configs.values_list('lesson_id', 'question_type_id'))
+        fulfilled_configs = set(req.generated_questions.values_list('lesson_id', 'question_type_id'))
+
+        if total_created == 0:
+            req.status = 'FAILED'
+            req.error_log = (
+                'AI service returned no questions for this request. '
+                'Check that the lesson content has been uploaded and processed '
+                'by the AI service.'
+            )
+            req.completed_at = timezone.now()
+            req.save(update_fields=['status', 'error_log', 'completed_at'])
+            return
+
+        missing = requested_configs - fulfilled_configs
+        if had_failures or missing:
+            req.status = 'COMPLETED_WITH_ERRORS'
+            if missing:
+                req.error_log = (
+                    f'{len(missing)} of {len(requested_configs)} requested question '
+                    f'set(s) returned no questions.'
+                )
+            req.completed_at = timezone.now()
+            update_fields = ['status', 'completed_at']
+            if req.error_log:
+                update_fields.append('error_log')
+            req.save(update_fields=update_fields)
+            return
+
+        req.status = 'COMPLETED'
         req.completed_at = timezone.now()
         req.save(update_fields=['status', 'completed_at'])
 

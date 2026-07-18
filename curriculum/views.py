@@ -20,6 +20,7 @@ from .serializers import (
     SourceFileResponseSerializer,
     LessonSerializer,
     LessonSourceSerializer,
+    DomainChoiceSerializer,
 )
 from .utils import compute_file_hash, build_file_url
 from .tasks import setup_project_ai
@@ -144,9 +145,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
                             raise ValueError('Each lesson requires a title or name.')
 
                         lesson_id = lesson_payload.get('id') or lesson_payload.get('lesson_id')
+                        language = lesson_payload.get('language', Lesson.LANGUAGE_EN)
+                        # Arabic lessons carry no domain.
+                        if language == Lesson.LANGUAGE_AR:
+                            domain = ''
+                        else:
+                            domain = lesson_payload.get('domain', Lesson.DOMAIN_GRAMMAR)
                         lesson_data = {
                             'title': title,
                             'description': lesson_payload.get('description', ''),
+                            'language': language,
+                            'domain': domain,
                             'unit_number': lesson_payload.get('unit_number', lesson_payload.get('unitNumber')),
                             'section': lesson_payload.get('section', ''),
                             'order': lesson_payload.get('order', index),
@@ -265,6 +274,14 @@ class LessonViewSet(viewsets.ModelViewSet):
         project = instance.project
         instance.delete()
         trigger_ai_setup(project)
+
+    @extend_schema(responses=DomainChoiceSerializer(many=True))
+    @action(detail=False, methods=['get'])
+    def domains(self, request):
+        """List the available lesson domains for the project-create form."""
+        data = [{'value': value, 'label': label} for value, label in Lesson.DOMAIN_CHOICES]
+        return Response(data)
+
 
 
 class LessonSourceViewSet(viewsets.ModelViewSet):

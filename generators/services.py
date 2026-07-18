@@ -79,8 +79,14 @@ class AIServiceClient:
             payload['top_k'] = top_k
         return self._request('POST', f'/api/v1/savaal/associate/{project_id}', json=payload)
 
-    def generate_questions(self, tasks):
-        return self._request('POST', '/api/v1/savaal/generate', json={'tasks': tasks})
+    def generate_questions(self, tasks, timeout=None):
+        generate_timeout = timeout or getattr(settings, 'AI_SERVICE_GENERATE_TIMEOUT', 600)
+        return self._request(
+            'POST',
+            '/api/v1/savaal/generate',
+            json={'tasks': tasks},
+            timeout=generate_timeout,
+        )
 
     def mock_generate_questions(self, tasks):
         """Return a deterministic fallback response for local runs and tests."""
@@ -114,9 +120,9 @@ class AIServiceClient:
             results.append({'project_id': project_id, 'results': task_results})
         return {'results': results}
 
-    def safe_generate_questions(self, tasks):
+    def safe_generate_questions(self, tasks, timeout=None):
         try:
-            return self.generate_questions(tasks)
+            return self.generate_questions(tasks, timeout=timeout)
         except Exception:
             logger.warning('AI service generate call failed; falling back to mock data.')
             if not self.allow_mock:

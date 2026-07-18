@@ -126,6 +126,8 @@ class ProjectListNestedLessonsTest(CurriculumAPITestMixin, TestCase):
             'id',
             'name',
             'description',
+            'language',
+            'domain',
             'unitNumber',
             'section',
             'order',
